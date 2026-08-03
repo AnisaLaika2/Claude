@@ -1,0 +1,19 @@
+{
+  "name": "Cibo — Cucina intelligente",
+  "short_name": "Cibo",
+  "description": "Dispensa, scadenze, spesa, ricette e nutrizione in un'unica app.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0d10",
+  "theme_color": "#0c0d10",
+  "orientation": "portrait",
+  "categories": ["food", "lifestyle", "health"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
