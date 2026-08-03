@@ -28,6 +28,20 @@ Non è un clone di Yazio / Lifesum / MyFitnessPal: Cibo parte dalla tua **dispen
 
 ---
 
+## 📸 Anteprima
+
+Screenshot reali dall'app in esecuzione (dati di esempio precaricati) — vedi la cartella [`screenshots/`](./screenshots).
+
+| Home | Dispensa | Frigo virtuale |
+|---|---|---|
+| ![Home](./screenshots/01-home-dark.png) | ![Dispensa](./screenshots/02-pantry-dark.png) | ![Frigo](./screenshots/03-fridge-dark.png) |
+| **Ricette AI** | **Meal Planner** | **Statistiche** |
+| ![Ricette](./screenshots/05-recipes-dark.png) | ![Planner](./screenshots/06-planner-dark.png) | ![Dashboard](./screenshots/07-dashboard-dark.png) |
+| **Dieta** | **Assistant** | **Mobile** |
+| ![Dieta](./screenshots/08-diet-dark.png) | ![Assistant](./screenshots/11-assistant-dark.png) | ![Mobile](./screenshots/14-home-mobile.png) |
+
+---
+
 ## 🏗️ Stack & architettura
 
 - **Next.js 14 (App Router) + TypeScript** — SSR, PWA, pronto per il wrapping su store
