@@ -10,7 +10,7 @@ import { toast } from "@/components/toast";
 import { IconPlus, IconChevron, IconTrash, IconCheck } from "@/components/icons";
 import type { MealType, PlannedMeal, Recipe } from "@/lib/types";
 
-const MEALS: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+const MEALS: MealType[] = ["breakfast", "snack", "lunch", "snack2", "dinner"];
 
 export default function PlannerPage() {
   const [weekOffset, setWeekOffset] = useState(0);

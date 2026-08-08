@@ -104,7 +104,7 @@ export interface Recipe {
   createdAt: string;
 }
 
-export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+export type MealType = "breakfast" | "snack" | "lunch" | "snack2" | "dinner";
 
 export interface PlannedMeal {
   id: string;

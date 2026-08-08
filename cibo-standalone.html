@@ -160,8 +160,10 @@
   .mealchip{background:rgb(var(--brand)/.12);color:rgb(var(--brand));border-radius:10px;padding:8px 11px;font-size:13px;font-weight:600;
     display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px}
   .mealchip.cooked{background:rgb(var(--success)/.14);color:rgb(var(--success));text-decoration:line-through}
-  .addmini{width:100%;border:1px dashed rgb(var(--border));border-radius:10px;padding:8px;font-size:12px;color:rgb(var(--faint));
-    background:none;cursor:pointer;font-weight:600;font-family:inherit}
+  .addmini{width:100%;border:1px dashed rgb(var(--border));border-radius:12px;padding:11px;font-size:12.5px;color:rgb(var(--faint));
+    background:none;cursor:pointer;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+  .addmini:hover{border-color:rgb(var(--brand)/.4);color:rgb(var(--brand))}
+  .addmini:active{transform:scale(.98)}
   .ring{transform:rotate(-90deg)}
   .rlist button{width:100%;display:flex;gap:11px;align-items:center;text-align:left;border:1px solid rgb(var(--border));
     background:rgb(var(--surface));border-radius:14px;padding:11px;cursor:pointer;margin-bottom:8px;color:rgb(var(--fg));font-family:inherit}
@@ -238,7 +240,7 @@ const UK=Object.keys(UNITS);
 const CO2={produce:.9,dairy:3.2,meat:15,fish:5,bakery:1.4,pantry:1.1,frozen:2.5,beverages:.8,snacks:2.3,condiments:1.5,spices:1,other:1.5};
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 /* Healthy meal library — per-serving nutrition. veg=vegetarian, vegan=vegan, aller=allergen keywords */
-const MEAL_SPLIT={breakfast:.25,lunch:.35,dinner:.30,snack:.10};
+const MEAL_SPLIT={breakfast:.25,snack:.075,lunch:.32,snack2:.075,dinner:.28};
 const MEALLIB=[
   {t:'breakfast',title:'Yogurt greco, avena e frutti di bosco',kcal:320,p:22,c:38,f:9,veg:true,aller:['latte','glutine']},
   {t:'breakfast',title:'Porridge d\'avena con banana e mandorle',kcal:360,p:12,c:55,f:11,veg:true,vegan:true,aller:['glutine','frutta a guscio','mandorle']},
@@ -354,7 +356,7 @@ function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOSt
 function daysFwd(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString()}
 function weekDays(off=0){const d=new Date();d.setDate(d.getDate()+off*7);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return Array.from({length:7},(_,i)=>{const x=new Date(d);x.setDate(d.getDate()+i);return x.toISOString().slice(0,10)})}
 const DOW=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
-const MEALS={breakfast:'Colazione',lunch:'Pranzo',dinner:'Cena',snack:'Spuntino'};
+const MEALS={breakfast:'Colazione',snack:'Spuntino mattina',lunch:'Pranzo',snack2:'Spuntino pomeriggio',dinner:'Cena'};
 const esc=s=>(s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- persistence ---------- */
@@ -504,13 +506,20 @@ function generateHealthyWeek(){
   const pickMenu=(pool,n)=>{const u=[],seen=new Set();pool.forEach(c=>{if(!seen.has(c.title)){seen.add(c.title);u.push(c)}});
     if(u.length<=n)return u;const s=u.slice().sort((a,b)=>a.kcal-b.kcal);const res=[];
     for(let i=0;i<n;i++)res.push(s[Math.round(i*(s.length-1)/(n-1))]);return res.filter((c,i,a)=>a.indexOf(c)===i)};
+  const snackMenu=pickMenu(pools.snack,MENU_N.snack);
   const menu={breakfast:pickMenu(pools.breakfast,MENU_N.breakfast),lunch:pickMenu(pools.lunch,MENU_N.lunch),
-    dinner:pickMenu(pools.dinner,MENU_N.dinner),snack:pickMenu(pools.snack,MENU_N.snack)};
+    dinner:pickMenu(pools.dinner,MENU_N.dinner),snack:snackMenu,
+    // Afternoon snack: rotate the same small snack pool so it differs from the morning one.
+    snack2:snackMenu.length>1?snackMenu.slice(1).concat(snackMenu.slice(0,1)):snackMenu};
   const days=weekDays(S.ui.weekOff);
   S.meals=S.meals.filter(m=>!days.includes(m.date));
   days.forEach((date,di)=>{
+    let lunchTitle=null;
     Object.keys(MEAL_SPLIT).forEach(meal=>{
-      const list=menu[meal];const cand=list[di%list.length];
+      const list=menu[meal];let cand=list[di%list.length];
+      // Don't repeat the same dish at lunch and dinner on the same day.
+      if(meal==='dinner'&&list.length>1&&cand.title===lunchTitle)cand=list[(di+1)%list.length];
+      if(meal==='lunch')lunchTitle=cand.title;
       const budget=t.kcal*MEAL_SPLIT[meal];
       // Scale the portion continuously so the day lands on its calorie budget.
       const serv=clamp(budget/cand.kcal,.5,2.5);
@@ -539,7 +548,8 @@ function render(){
   document.querySelector('[data-action="theme"]').innerHTML=svg(dark?'sun':'moon');
   document.querySelector('[data-action="more"]').innerHTML=svg('more');
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus();try{const v=el.value;el.value='';el.value=v}catch(e){}}focusId=null}
-  window.scrollTo({top:0});
+  else window.scrollTo({top:0});
+  if(t==='planner'){const ps=document.getElementById('planSel');if(ps)try{ps.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}}
 }
 
 /* ---------- HOME ---------- */
@@ -641,15 +651,38 @@ function vRecipes(){const list=S.recipes.map(r=>({r,sc:matchScore(r)})).sort((a,
 }
 
 /* ---------- PLANNER ---------- */
+const MEAL_EMOJI={breakfast:'🍳',snack:'🍎',lunch:'🍝',snack2:'🥨',dinner:'🍽️'};
 function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=days.includes(S.ui.selDay)?S.ui.selDay:days[0];
-  const tk=todayKey();const dayMeals=m=>S.meals.filter(x=>x.date===sel&&x.meal===m);
-  const weekMeals=S.meals.filter(m=>days.includes(m.date));
-  const wk=weekMeals.reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
+  const tk=todayKey();const t=targets(S.profile);const tgt=t.kcal;
+  const dayMeals=m=>S.meals.filter(x=>x.date===sel&&x.meal===m);
+  const selTot=S.meals.filter(x=>x.date===sel).reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
+  const wk=S.meals.filter(m=>days.includes(m.date)).reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
+  const dayName=new Date(sel).toLocaleDateString('it-IT',{weekday:'long'});
+  const pctKcal=Math.min(100,tgt?Math.round(selTot.kcal/tgt*100):0);
   return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Planner</h1><p class="sub">Pianifica la settimana</p></div>
     <div class="row" style="gap:4px"><button class="iconbtn" data-action="week" data-v="-1">‹</button><button class="chip" data-action="week" data-v="0">Oggi</button><button class="iconbtn" data-action="week" data-v="1">›</button></div></div>
-  <div class="weekstrip" style="margin-top:14px">${days.map((d,i)=>{const dm=S.meals.filter(m=>m.date===d);const kc=Math.round(dm.reduce((s,m)=>s+(m.nutrition?.kcal||0),0));return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="font-size:9px;color:rgb(var(--faint));margin-top:2px" class="tnum">${kc||''}</div></button>`}).join('')}</div>
-  <div class="card" style="margin-top:16px;padding:6px 14px">${Object.keys(MEALS).map(meal=>{const cm=dayMeals(meal);return `<div class="mealrow"><div class="mlab">${MEALS[meal]}</div><div style="flex:1;min-width:0">${cm.map(m=>`<div class="mealchip ${m.cooked?'cooked':''}" data-action="meal" data-id="${m.id}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title)}</span><span style="font-size:11px;opacity:.8">${m.nutrition?Math.round(m.nutrition.kcal)+'kcal':''}</span></div>`).join('')}<button class="addmini" data-action="addmeal" data-meal="${meal}" data-date="${sel}">+ Aggiungi</button></div></div>`}).join('')}</div>
-  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:4px">Media giornaliera</p><p style="font-size:11px;color:rgb(var(--faint));margin-bottom:12px">Obiettivo: ${targets(S.profile).kcal} kcal/g</p><div class="grid g4">${[['kcal',Math.round(wk.kcal/7)],['Prot',Math.round(wk.p/7)+'g'],['Carb',Math.round(wk.c/7)+'g'],['Grassi',Math.round(wk.f/7)+'g']].map(([l,v])=>`<div><div style="font-size:18px;font-weight:800" class="tnum">${v}</div><div style="font-size:11px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`;
+  <div class="weekstrip" style="margin-top:14px">${days.map((d,i)=>{const kc=Math.round(S.meals.filter(m=>m.date===d).reduce((s,m)=>s+(m.nutrition?.kcal||0),0));const pc=Math.min(100,tgt?kc/tgt*100:0);const col=kc===0?'--surface2':pc>112?'--warning':'--brand';return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" ${d===sel?'id="planSel"':''} data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="height:3px;border-radius:9px;background:rgb(var(--surface2));margin-top:6px;overflow:hidden"><span style="display:block;height:100%;width:${pc}%;background:rgb(var(${col}))"></span></div></button>`}).join('')}</div>
+
+  <div class="card" style="margin-top:16px;padding:16px">
+    <div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><p style="font-size:12px;color:rgb(var(--muted));text-transform:capitalize">${dayName}${sel===tk?' · oggi':''}</p><p style="font-size:23px;font-weight:800;margin-top:2px" class="tnum">${Math.round(selTot.kcal)} <span style="font-size:13px;color:rgb(var(--faint));font-weight:600">/ ${tgt} kcal</span></p></div>
+      <div style="text-align:right;font-size:11px;color:rgb(var(--muted))" class="tnum">P ${Math.round(selTot.p)} · C ${Math.round(selTot.c)} · G ${Math.round(selTot.f)}</div>
+    </div>
+    <div style="height:8px;border-radius:9px;background:rgb(var(--surface2));margin-top:11px;overflow:hidden"><span style="display:block;height:100%;width:${pctKcal}%;background:rgb(var(--brand));transition:width .45s cubic-bezier(.22,1,.36,1)"></span></div>
+  </div>
+
+  ${Object.keys(MEALS).map(meal=>{const cm=dayMeals(meal);const ot=Math.round(tgt*MEAL_SPLIT[meal]);return `
+    <div style="margin-top:18px">
+      <div class="row" style="justify-content:space-between;margin-bottom:9px;padding:0 2px"><span class="row" style="gap:8px;font-weight:800;font-size:14px"><span style="font-size:17px">${MEAL_EMOJI[meal]}</span>${MEALS[meal]}</span><span style="font-size:11px;color:rgb(var(--faint))">~${ot} kcal</span></div>
+      ${cm.map(m=>`<button class="card" data-action="meal" data-id="${m.id}" style="width:100%;text-align:left;padding:11px;margin-bottom:8px;display:flex;align-items:center;gap:12px;color:inherit;${m.cooked?'opacity:.65':''}">
+        <span style="width:42px;height:42px;border-radius:12px;background:rgb(var(--brand)/.1);display:grid;place-items:center;font-size:21px;flex-shrink:0">${MEAL_EMOJI[meal]}</span>
+        <span style="flex:1;min-width:0"><span style="display:block;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.cooked?'✓ ':''}${esc(m.title)}</span>${m.nutrition?`<span style="display:block;font-size:11px;color:rgb(var(--muted));margin-top:2px" class="tnum">P ${Math.round(m.nutrition.protein)} · C ${Math.round(m.nutrition.carbs)} · G ${Math.round(m.nutrition.fat)}</span>`:''}</span>
+        <span style="flex-shrink:0;text-align:right"><span style="font-weight:800;font-size:15px" class="tnum">${m.nutrition?Math.round(m.nutrition.kcal):'—'}</span><span style="display:block;font-size:9px;color:rgb(var(--faint))">kcal</span></span>
+      </button>`).join('')}
+      <button class="addmini" data-action="addmeal" data-meal="${meal}" data-date="${sel}">${svg('plus',13)} Aggiungi</button>
+    </div>`}).join('')}
+
+  <div class="card" style="margin-top:22px;padding:16px"><p style="font-weight:800;margin-bottom:4px">Media giornaliera</p><p style="font-size:11px;color:rgb(var(--faint));margin-bottom:12px">Obiettivo: ${tgt} kcal/g</p><div class="grid g4">${[['kcal',Math.round(wk.kcal/7)],['Prot',Math.round(wk.p/7)+'g'],['Carb',Math.round(wk.c/7)+'g'],['Grassi',Math.round(wk.f/7)+'g']].map(([l,v])=>`<div><div style="font-size:18px;font-weight:800" class="tnum">${v}</div><div style="font-size:11px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`;
 }
 
 /* ---------- DIET ---------- */

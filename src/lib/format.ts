@@ -33,9 +33,10 @@ export function weekDays(anchor = new Date()): string[] {
 export const DAY_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 export const MEAL_LABELS: Record<string, string> = {
   breakfast: "Colazione",
+  snack: "Spuntino mattina",
   lunch: "Pranzo",
+  snack2: "Spuntino pomeriggio",
   dinner: "Cena",
-  snack: "Spuntino",
 };
 
 export function clamp(n: number, min: number, max: number): number {

@@ -17,9 +17,10 @@ interface MealTemplate {
 
 export const MEAL_SPLIT: Record<MealType, number> = {
   breakfast: 0.25,
-  lunch: 0.35,
-  dinner: 0.3,
-  snack: 0.1,
+  snack: 0.075,
+  lunch: 0.32,
+  snack2: 0.075,
+  dinner: 0.28,
 };
 
 export const MEAL_LIBRARY: MealTemplate[] = [
@@ -111,11 +112,13 @@ export function buildHealthyWeek(
     return f;
   };
 
+  const snackPool = build("snack");
   const pools: Record<MealType, Candidate[]> = {
     breakfast: build("breakfast"),
+    snack: snackPool,
     lunch: build("lunch"),
+    snack2: snackPool,
     dinner: build("dinner"),
-    snack: build("snack"),
   };
 
   const meals: Omit<PlannedMeal, "id">[] = [];
@@ -123,7 +126,7 @@ export function buildHealthyWeek(
   // Shopping once a week: pick a SMALL fixed menu per meal type and repeat it
   // across the days so the same ingredients get reused, instead of buying many
   // things for a single small use. Candidates spread by calories for variety.
-  const MENU_N: Record<MealType, number> = { breakfast: 2, lunch: 3, dinner: 3, snack: 2 };
+  const MENU_N: Record<MealType, number> = { breakfast: 2, snack: 2, lunch: 3, snack2: 2, dinner: 3 };
   const pickMenu = (pool: Candidate[], n: number): Candidate[] => {
     const uniq: Candidate[] = [];
     const seen = new Set<string>();
@@ -134,18 +137,25 @@ export function buildHealthyWeek(
     for (let i = 0; i < n; i++) res.push(s[Math.round((i * (s.length - 1)) / (n - 1))]);
     return res.filter((c, i, a) => a.indexOf(c) === i);
   };
+  const snackMenu = pickMenu(pools.snack, MENU_N.snack);
   const menu: Record<MealType, Candidate[]> = {
     breakfast: pickMenu(pools.breakfast, MENU_N.breakfast),
+    snack: snackMenu,
     lunch: pickMenu(pools.lunch, MENU_N.lunch),
+    // Afternoon snack: rotate the same small snack pool so it differs from the morning one.
+    snack2: snackMenu.length > 1 ? snackMenu.slice(1).concat(snackMenu.slice(0, 1)) : snackMenu,
     dinner: pickMenu(pools.dinner, MENU_N.dinner),
-    snack: pickMenu(pools.snack, MENU_N.snack),
   };
 
   days.forEach((date, di) => {
+    let lunchTitle: string | null = null;
     (Object.keys(MEAL_SPLIT) as MealType[]).forEach((meal) => {
       const budget = t.targetKcal * MEAL_SPLIT[meal];
       const list = menu[meal];
-      const cand = list[di % list.length];
+      let cand = list[di % list.length];
+      // Don't repeat the same dish at lunch and dinner on the same day.
+      if (meal === "dinner" && list.length > 1 && cand.title === lunchTitle) cand = list[(di + 1) % list.length];
+      if (meal === "lunch") lunchTitle = cand.title;
 
       const serv = clampN(budget / cand.kcal, 0.5, 2.5);
       const nutrition: Nutrition = {
@@ -206,7 +216,7 @@ export function recipeFromTemplate(title: string): Omit<Recipe, "id" | "createdA
   const tmpl = MEAL_LIBRARY.find((m) => m.title === title);
   if (!tmpl) return null;
   const det = MEAL_DETAILS[title] || { minutes: 15, ingredients: [], steps: ["Prepara gli ingredienti e componi il piatto."] };
-  const mealTag = { breakfast: "colazione", lunch: "pranzo", dinner: "cena", snack: "spuntino" }[tmpl.meal];
+  const mealTag = { breakfast: "colazione", lunch: "pranzo", dinner: "cena", snack: "spuntino", snack2: "spuntino" }[tmpl.meal];
   return {
     title,
     description: "Piatto del piano salutare, bilanciato per il tuo obiettivo.",
