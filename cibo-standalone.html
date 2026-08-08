@@ -1,0 +1,659 @@
+<style>
+  :root{
+    --bg:246 247 248; --surface:255 255 255; --surface2:240 241 243; --border:225 227 231;
+    --fg:22 24 28; --muted:96 100 110; --faint:150 154 164;
+    --brand:31 184 127; --brandfg:255 255 255;
+    --success:26 160 116; --warning:214 158 46; --danger:214 92 92; --info:58 132 200;
+    --shadow:0 1px 2px rgb(15 20 30/.05),0 8px 24px -12px rgb(15 20 30/.14);
+    --sheet:0 -8px 40px -12px rgb(15 20 30/.28);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:11 12 15; --surface:22 24 29; --surface2:31 33 40; --border:42 45 54;
+      --fg:236 238 242; --muted:154 158 168; --faint:108 112 124;
+      --brand:52 199 152; --brandfg:8 20 16;
+      --success:52 199 152; --warning:236 184 84; --danger:238 112 112; --info:96 160 232;
+      --shadow:0 1px 2px rgb(0 0 0/.3),0 10px 30px -14px rgb(0 0 0/.6);
+      --sheet:0 -10px 44px -12px rgb(0 0 0/.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:246 247 248; --surface:255 255 255; --surface2:240 241 243; --border:225 227 231;
+    --fg:22 24 28; --muted:96 100 110; --faint:150 154 164;
+    --brand:31 184 127; --brandfg:255 255 255;
+    --success:26 160 116; --warning:214 158 46; --danger:214 92 92; --info:58 132 200;
+    --shadow:0 1px 2px rgb(15 20 30/.05),0 8px 24px -12px rgb(15 20 30/.14);
+  }
+  :root[data-theme="dark"]{
+    --bg:11 12 15; --surface:22 24 29; --surface2:31 33 40; --border:42 45 54;
+    --fg:236 238 242; --muted:154 158 168; --faint:108 112 124;
+    --brand:52 199 152; --brandfg:8 20 16;
+    --success:52 199 152; --warning:236 184 84; --danger:238 112 112; --info:96 160 232;
+    --shadow:0 1px 2px rgb(0 0 0/.3),0 10px 30px -14px rgb(0 0 0/.6);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    background:rgb(var(--bg));color:rgb(var(--fg));
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    font-feature-settings:"cv11";overscroll-behavior-y:none;
+  }
+  .tnum{font-variant-numeric:tabular-nums}
+  #app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:96px}
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;background:rgb(var(--bg)/.8);backdrop-filter:saturate(180%) blur(18px);
+    -webkit-backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid rgb(var(--border))}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:rgb(var(--brand));display:grid;place-items:center;font-size:18px;box-shadow:var(--shadow)}
+  .brand b{font-size:18px;font-weight:800;letter-spacing:-.02em}
+  .brand span{font-size:10px;color:rgb(var(--faint));display:block;margin-top:-2px;font-weight:600}
+  .hbtns{display:flex;gap:4px}
+  .iconbtn{width:38px;height:38px;border-radius:11px;border:none;background:transparent;color:rgb(var(--muted));
+    display:grid;place-items:center;cursor:pointer;transition:.15s;position:relative}
+  .iconbtn:hover{background:rgb(var(--surface2))}
+  .iconbtn:active{transform:scale(.92)}
+  .badge-dot{position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;
+    background:rgb(var(--danger));color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center}
+  main{padding:18px}
+  h1.title{font-size:26px;font-weight:800;letter-spacing:-.03em;text-wrap:balance}
+  .sub{font-size:13px;color:rgb(var(--muted));margin-top:2px}
+  .eyebrow{font-size:12px;color:rgb(var(--muted))}
+  section{margin-top:22px;animation:fade .4s cubic-bezier(.22,1,.36,1)}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  .sechead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .sechead h2{font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .link{font-size:13px;font-weight:600;color:rgb(var(--brand));background:none;border:none;cursor:pointer}
+  .card{background:rgb(var(--surface));border:1px solid rgb(var(--border));border-radius:18px;box-shadow:var(--shadow)}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+  .row{display:flex;align-items:center;gap:12px}
+  .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .quick button{background:rgb(var(--surface));border:1px solid rgb(var(--border));border-radius:16px;padding:14px 6px;
+    display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:.15s;box-shadow:var(--shadow);color:rgb(var(--fg))}
+  .quick button:active{transform:scale(.95)}
+  .quick .qi{color:rgb(var(--brand))}
+  .quick small{font-size:11px;font-weight:700}
+  .stat{padding:15px}
+  .stat .ic{margin-bottom:8px}
+  .stat .v{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .stat .l{font-size:12px;color:rgb(var(--muted));margin-top:5px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid rgb(var(--border));background:rgb(var(--surface));
+    color:rgb(var(--muted));border-radius:999px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:.15s}
+  .chip.on{border-color:rgb(var(--brand)/.45);background:rgb(var(--brand)/.12);color:rgb(var(--brand))}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .hscroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  .hscroll::-webkit-scrollbar{display:none}
+  .pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}
+  .input{width:100%;border:1px solid rgb(var(--border));background:rgb(var(--surface));color:rgb(var(--fg));
+    border-radius:13px;padding:12px 14px;font-size:15px;font-family:inherit;transition:.15s;outline:none}
+  .input:focus{border-color:rgb(var(--brand)/.5);box-shadow:0 0 0 3px rgb(var(--brand)/.15)}
+  select.input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+  label.lab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgb(var(--faint));display:block;margin-bottom:6px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:13px;padding:12px 16px;
+    font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid transparent;transition:.15s}
+  .btn:active{transform:scale(.97)}
+  .btn.pri{background:rgb(var(--brand));color:rgb(var(--brandfg));box-shadow:var(--shadow)}
+  .btn.sec{background:rgb(var(--surface2));color:rgb(var(--fg));border-color:rgb(var(--border))}
+  .btn.dng{background:rgb(var(--danger)/.12);color:rgb(var(--danger))}
+  .btn.block{width:100%}
+  .stepper{display:inline-flex;align-items:center;border:1px solid rgb(var(--border));border-radius:12px;overflow:hidden}
+  .stepper button{width:36px;height:34px;border:none;background:transparent;color:rgb(var(--muted));font-size:18px;cursor:pointer}
+  .stepper button:active{background:rgb(var(--surface2))}
+  .stepper .val{min-width:64px;text-align:center;font-size:13.5px;font-weight:700}
+  .item{padding:13px;border-radius:16px;display:flex;flex-direction:column;gap:10px}
+  .item .top{display:flex;align-items:flex-start;gap:11px}
+  .thumb{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+  .iname{font-weight:700;font-size:14.5px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .imeta{font-size:12px;color:rgb(var(--muted));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .empty{border:1.5px dashed rgb(var(--border));border-radius:18px;padding:44px 20px;text-align:center}
+  .empty .e-ic{font-size:34px;margin-bottom:10px;opacity:.8}
+  .empty p{font-weight:700}.empty small{color:rgb(var(--muted));display:block;margin-top:5px;max-width:260px;margin-inline:auto}
+  nav#tab{position:fixed;bottom:0;left:0;right:0;z-index:30;max-width:520px;margin:0 auto;display:flex;
+    background:rgb(var(--surface)/.82);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+    border-top:1px solid rgb(var(--border));padding-bottom:env(safe-area-inset-bottom)}
+  nav#tab button{flex:1;border:none;background:none;padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:rgb(var(--faint));font-size:10px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+  nav#tab button.on{color:rgb(var(--brand))}
+  nav#tab button:active{transform:scale(.9)}
+  /* modal */
+  #modroot{position:fixed;inset:0;z-index:50;display:none}
+  #modroot.show{display:block}
+  .scrim{position:absolute;inset:0;background:rgb(0 0 0/.45);backdrop-filter:blur(3px);animation:fade .25s}
+  .sheet{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:rgb(var(--surface));
+    border-radius:24px 24px 0 0;box-shadow:var(--sheet);padding:8px 18px calc(24px + env(safe-area-inset-bottom));
+    max-height:92vh;overflow-y:auto;animation:slideup .3s cubic-bezier(.22,1,.36,1)}
+  @keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
+  .grab{width:40px;height:4px;border-radius:99px;background:rgb(var(--border));margin:6px auto 14px}
+  .sheet h3{font-size:19px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+  .fgroup{margin-top:14px}
+  .catgrid{display:flex;flex-wrap:wrap;gap:7px}
+  .loc3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .loctile{border:1px solid rgb(var(--border));border-radius:14px;padding:11px 4px;display:flex;flex-direction:column;
+    align-items:center;gap:4px;cursor:pointer;font-size:12px;font-weight:600;color:rgb(var(--muted));background:none;transition:.15s}
+  .loctile.on{border-color:rgb(var(--brand)/.45);background:rgb(var(--brand)/.12);color:rgb(var(--brand))}
+  .loctile .em{font-size:19px}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:108px;z-index:80;background:rgb(var(--surface));
+    border:1px solid rgb(var(--border));box-shadow:var(--sheet);border-radius:14px;padding:12px 16px;font-size:13.5px;font-weight:600;
+    display:flex;align-items:center;gap:9px;animation:pop .25s;max-width:90%}
+  .toast .dot{color:rgb(var(--success))}
+  .shelf{background:rgb(var(--bg)/.6);border:1px solid rgb(var(--border));border-radius:16px;padding:10px;min-height:70px}
+  .fitem{width:80px;flex-shrink:0;border:1px solid rgb(var(--border));background:rgb(var(--surface));border-radius:13px;
+    padding:9px 5px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;cursor:pointer;transition:.15s}
+  .fitem:active{transform:translateY(-2px)}
+  .fitem .st{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:99px}
+  .fitem .fn{font-size:11px;font-weight:700;text-align:center;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fitem .fq{font-size:10px;color:rgb(var(--faint))}
+  .weekstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+  .weekstrip::-webkit-scrollbar{display:none}
+  .day{min-width:46px;border-radius:13px;padding:8px 4px;text-align:center;cursor:pointer;border:1px solid transparent;background:rgb(var(--surface2))}
+  .day.today{background:rgb(var(--brand)/.14)}
+  .day.sel{border-color:rgb(var(--brand)/.5)}
+  .day .dn{font-size:11px;font-weight:800}.day .dd{font-size:11px;color:rgb(var(--muted))}
+  .mealrow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid rgb(var(--border))}
+  .mealrow:first-child{border-top:none}
+  .mlab{width:74px;flex-shrink:0;font-size:12px;font-weight:700;color:rgb(var(--faint));padding-top:9px}
+  .mealchip{background:rgb(var(--brand)/.12);color:rgb(var(--brand));border-radius:10px;padding:8px 11px;font-size:13px;font-weight:600;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px}
+  .mealchip.cooked{background:rgb(var(--success)/.14);color:rgb(var(--success));text-decoration:line-through}
+  .addmini{width:100%;border:1px dashed rgb(var(--border));border-radius:10px;padding:8px;font-size:12px;color:rgb(var(--faint));
+    background:none;cursor:pointer;font-weight:600;font-family:inherit}
+  .ring{transform:rotate(-90deg)}
+  .rlist button{width:100%;display:flex;gap:11px;align-items:center;text-align:left;border:1px solid rgb(var(--border));
+    background:rgb(var(--surface));border-radius:14px;padding:11px;cursor:pointer;margin-bottom:8px;color:rgb(var(--fg));font-family:inherit}
+  .macrobar{height:6px;border-radius:99px;background:rgb(var(--surface2));overflow:hidden;margin-top:5px}
+  .macrobar>span{display:block;height:100%;border-radius:99px}
+  .more-item{display:flex;align-items:center;gap:13px;padding:14px 6px;border-bottom:1px solid rgb(var(--border));cursor:pointer;font-weight:600}
+  .more-item:last-child{border-bottom:none}
+  .more-item .mi{color:rgb(var(--brand))}
+  .checkbox{width:24px;height:24px;border-radius:99px;border:2px solid rgb(var(--border));display:grid;place-items:center;flex-shrink:0;cursor:pointer;transition:.15s}
+  .checkbox.on{border-color:rgb(var(--brand));background:rgb(var(--brand));color:rgb(var(--brandfg))}
+  .divider{height:1px;background:rgb(var(--border));margin:14px 0}
+  a{color:rgb(var(--brand))}
+  ::selection{background:rgb(var(--brand)/.25)}
+</style>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="logo">🍃</div>
+      <div><b>Cibo</b><span>Cucina intelligente</span></div>
+    </div>
+    <div class="hbtns">
+      <button class="iconbtn" data-action="nav" data-tab="pantry" id="bell" title="Scadenze"></button>
+      <button class="iconbtn" data-action="theme" title="Tema"></button>
+      <button class="iconbtn" data-action="more" title="Altro"></button>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav id="tab"></nav>
+<div id="modroot"></div>
+
+<script>
+"use strict";
+/* ---------- icons ---------- */
+const I = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/>',
+  pantry:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M12 3v18"/>',
+  cart:'<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.4 12.3a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L21 7H6"/>',
+  chef:'<path d="M7 21h10M6 13.5A4 4 0 0 1 7 5.7 4.5 4.5 0 0 1 16.9 5 4 4 0 0 1 18 13.5"/><path d="M6 13.5h12V17a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z"/>',
+  cal:'<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/>',
+  fridge:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M6 10h12M9 5v2M9 13v3"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  leaf:'<path d="M11 20A7 7 0 0 1 4 13c0-5 4-9 16-9 0 10-5 14-9 14Z"/><path d="M9 15c2-4 5-6 8-7"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  trash:'<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  flame:'<path d="M12 3c3 3.5 5 6 5 9a5 5 0 0 1-10 0c0-1.5.5-3 2-4.5 0 2 1 3 2 3 .5 0 1-.5 1-1.5 0-2-1-4 0-6z"/>',
+  euro:'<path d="M17 5.5A6 6 0 0 0 7 10m0 4a6 6 0 0 0 10 4.5M4 10h9M4 14h9"/>',
+  warn:'<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.5"/>',
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  moon:'<path d="M21 12.8A8 8 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8z"/>',
+  sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>',
+  more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  check:'<path d="M5 12.5 10 17l9-10"/>',
+  heart:'<path d="M12 20s-7-4.3-9.3-8.5C1 8 2.5 4.5 6 4.5c2 0 3.2 1.2 4 2.5.8-1.3 2-2.5 4-2.5 3.5 0 5 3.5 3.3 7C19 15.7 12 20 12 20z"/>',
+  send:'<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+};
+const svg=(n,s=20,sw=1.8)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+
+/* ---------- meta ---------- */
+const CAT={produce:['Frutta e verdura','🥬','#4caf6d'],dairy:['Latticini','🧀','#e0a83a'],meat:['Carne','🥩','#d05a5a'],
+  fish:['Pesce','🐟','#4a9fd0'],bakery:['Panetteria','🍞','#c99a5b'],pantry:['Dispensa','🥫','#9b8b6b'],
+  frozen:['Surgelati','🧊','#6bb6d0'],beverages:['Bevande','🥤','#7a6bd0'],snacks:['Snack','🍪','#d0a05a'],
+  condiments:['Condimenti','🫙','#c07a4a'],spices:['Spezie','🌶️','#c04a4a'],other:['Altro','📦','#8b8b95']};
+const CATK=Object.keys(CAT);
+const LOC={fridge:['Frigo','🧊'],freezer:['Freezer','❄️'],pantry:['Dispensa','🗄️']};
+const UNITS={g:'g',kg:'kg',ml:'ml',l:'l',pcs:'pz',pack:'conf.',can:'lattina',bottle:'bott.',slice:'fetta'};
+const UK=Object.keys(UNITS);
+const CO2={produce:.9,dairy:3.2,meat:15,fish:5,bakery:1.4,pantry:1.1,frozen:2.5,beverages:.8,snacks:2.3,condiments:1.5,spices:1,other:1.5};
+
+/* ---------- utils ---------- */
+const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const todayKey=(d=new Date())=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
+const daysUntil=iso=>{if(!iso)return null;const t=new Date(iso),n=new Date();return Math.round((new Date(t.getFullYear(),t.getMonth(),t.getDate())-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/864e5)};
+function expStatus(iso){const d=daysUntil(iso);if(d===null)return'none';if(d<0)return'expired';if(d<=1)return'critical';if(d<=7)return'soon';return'ok'}
+const EXPC={expired:'--danger',critical:'--danger',soon:'--warning',ok:'--success',none:'--faint'};
+const money=v=>'€'+(v||0).toFixed(2);
+function relDay(iso){const d=daysUntil(iso);if(d===null)return'—';if(d===0)return'oggi';if(d===1)return'domani';if(d===-1)return'ieri';if(d>1)return'tra '+d+'g';return Math.abs(d)+'g fa'}
+const approxKg=(q,u,w=150)=>u==='kg'?q:u==='g'?q/1000:u==='l'?q:u==='ml'?q/1000:(q*w)/1000;
+function daysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString()}
+function daysFwd(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString()}
+function weekDays(off=0){const d=new Date();d.setDate(d.getDate()+off*7);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return Array.from({length:7},(_,i)=>{const x=new Date(d);x.setDate(d.getDate()+i);return x.toISOString().slice(0,10)})}
+const DOW=['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const MEALS={breakfast:'Colazione',lunch:'Pranzo',dinner:'Cena',snack:'Spuntino'};
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- persistence ---------- */
+const KEY='cibo_state_v1';let mem=null;
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return mem}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){mem=JSON.parse(JSON.stringify(S))}}
+
+/* ---------- seed ---------- */
+function seed(){
+  const P=(name,category,location,quantity,unit,init,exp,price,extra={})=>({id:uid('pan'),name,category,location,quantity,unit,initialQuantity:init,purchaseDate:daysAgo(1),expiryDate:exp,price,...extra,updatedAt:new Date().toISOString()});
+  const pantry=[
+    P('Petto di pollo','meat','fridge',500,'g',500,daysFwd(2),5.9,{nutrition:{kcal:165,protein:31,carbs:0,fat:3.6}}),
+    P('Zucchine','produce','fridge',4,'pcs',4,daysFwd(3),1.8,{unitWeightG:200,nutrition:{kcal:17,protein:1.2,carbs:3.1,fat:.3}}),
+    P('Parmigiano','dairy','fridge',200,'g',300,daysFwd(40),6.5,{opened:true,nutrition:{kcal:392,protein:33,carbs:0,fat:29}}),
+    P('Uova','dairy','fridge',6,'pcs',6,daysFwd(14),2.4,{unitWeightG:60,nutrition:{kcal:143,protein:13,carbs:.7,fat:9.5}}),
+    P('Spaghetti','pantry','pantry',500,'g',500,daysFwd(400),1.2,{nutrition:{kcal:359,protein:13,carbs:71,fat:1.5}}),
+    P('Passata di pomodoro','pantry','pantry',700,'g',700,daysFwd(300),1.1,{nutrition:{kcal:32,protein:1.4,carbs:6,fat:.2}}),
+    P('Latte','dairy','fridge',1,'l',1,daysFwd(4),1.3,{nutrition:{kcal:46,protein:3.2,carbs:4.8,fat:1.5}}),
+    P('Yogurt greco','dairy','fridge',2,'pcs',4,daysFwd(6),3.2,{unitWeightG:150,nutrition:{kcal:97,protein:9,carbs:4,fat:5}}),
+    P('Pane integrale','bakery','pantry',1,'pack',1,daysFwd(2),2,{unitWeightG:400,nutrition:{kcal:247,protein:9,carbs:41,fat:3.4}}),
+    P('Olio extravergine','condiments','pantry',750,'ml',1000,daysFwd(300),8.9,{nutrition:{kcal:884,protein:0,carbs:0,fat:100}}),
+    P('Piselli surgelati','frozen','freezer',400,'g',800,daysFwd(200),1.9,{nutrition:{kcal:81,protein:5,carbs:14,fat:.4}}),
+    P('Salmone','fish','freezer',300,'g',300,daysFwd(90),7.5,{nutrition:{kcal:208,protein:20,carbs:0,fat:13}}),
+  ];
+  const R=(title,description,ingredients,steps,minutes,servings,nutrition,tags)=>({id:uid('rec'),title,description,ingredients,steps,minutes,difficulty:'easy',servings,nutrition,tags,source:'seed',createdAt:new Date().toISOString()});
+  const recipes=[
+    R('Pasta zucchine e parmigiano','Primo cremoso e veloce con zucchine saltate.',[{name:'Spaghetti',quantity:160,unit:'g'},{name:'Zucchine',quantity:2,unit:'pcs'},{name:'Parmigiano',quantity:40,unit:'g'},{name:'Olio extravergine',quantity:15,unit:'ml'}],['Cuoci gli spaghetti in acqua salata.','Salta le zucchine a rondelle con l\'olio 6-7 min.','Manteca la pasta con le zucchine e un po\' di acqua di cottura.','Aggiungi il parmigiano e servi.'],20,2,{kcal:520,protein:22,carbs:68,fat:18},['vegetariano','veloce']),
+    R('Pollo alle zucchine','Bocconcini di pollo dorati, leggero e proteico.',[{name:'Petto di pollo',quantity:300,unit:'g'},{name:'Zucchine',quantity:2,unit:'pcs'},{name:'Olio extravergine',quantity:15,unit:'ml'}],['Rosola il pollo a cubetti con un filo d\'olio.','Aggiungi le zucchine a dadini, cuoci 8 min.','Sala, pepa e completa con parmigiano.'],25,2,{kcal:340,protein:42,carbs:8,fat:15},['proteico','light']),
+    R('Frittata di piselli','Soffice frittata svuota-frigo.',[{name:'Uova',quantity:4,unit:'pcs'},{name:'Piselli surgelati',quantity:150,unit:'g'},{name:'Parmigiano',quantity:30,unit:'g'}],['Sbatti le uova con parmigiano, sale e pepe.','Salta i piselli 5 min, versa le uova.','Cuoci a fuoco medio, gira e completa.'],15,2,{kcal:300,protein:24,carbs:10,fat:18},['vegetariano','veloce']),
+    R('Salmone al forno','Filetto di salmone ricco di omega-3.',[{name:'Salmone',quantity:300,unit:'g'},{name:'Zucchine',quantity:1,unit:'pcs'},{name:'Olio extravergine',quantity:10,unit:'ml'}],['Forno a 200°C.','Disponi salmone e zucchine, condisci con olio e sale.','Cuoci 18-20 min.'],25,2,{kcal:380,protein:34,carbs:6,fat:24},['pesce','omega3']),
+  ];
+  return {pantry,shopping:[],recipes,meals:[],waste:[],consumption:[],
+    profile:{name:'Tu',sex:'female',age:30,heightCm:170,weightKg:68,goal:'maintain',activity:'moderate',allergies:[],preferences:[],diet:'none'},
+    settings:{theme:'system',currency:'€'},ui:{tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',weekOff:0,selDay:todayKey()}};
+}
+
+/* ---------- state ---------- */
+let S=load();
+if(!S){S=seed();persist()}
+if(!S.ui)S.ui={tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',weekOff:0,selDay:todayKey()};
+let focusId=null;
+
+/* ---------- nutrition ---------- */
+const ACT={sedentary:1.2,light:1.375,moderate:1.55,active:1.725,athlete:1.9};
+const GK={lose:-450,maintain:0,gain:350,muscle:250};const GP={lose:2,maintain:1.6,gain:1.8,muscle:2.2};
+function targets(p){const bmr=10*p.weightKg+6.25*p.heightCm-5*p.age+(p.sex==='male'?5:-161);
+  const tdee=bmr*ACT[p.activity];const kcal=Math.round(tdee+GK[p.goal]);const protein=Math.round(p.weightKg*GP[p.goal]);
+  const fat=Math.round(kcal*.27/9);const carbs=Math.round((kcal-kcal*.27-protein*4)/4);return{kcal,protein,carbs,fat}}
+function itemNut(it,qty){if(!it.nutrition)return null;const g=approxKg(qty,it.unit,it.unitWeightG)*1000;const f=g/100;
+  return{kcal:Math.round(it.nutrition.kcal*f),protein:+(it.nutrition.protein*f).toFixed(1),carbs:+(it.nutrition.carbs*f).toFixed(1),fat:+(it.nutrition.fat*f).toFixed(1)}}
+function matchScore(r){const names=S.pantry.filter(p=>p.quantity>0).map(p=>p.name.toLowerCase());let h=0;
+  r.ingredients.forEach(i=>{const n=i.name.toLowerCase();if(names.some(pn=>pn.includes(n)||n.includes(pn)))h++});return r.ingredients.length?h/r.ingredients.length:0}
+function missingIng(r){const names=S.pantry.filter(p=>p.quantity>0).map(p=>p.name.toLowerCase());
+  return r.ingredients.filter(i=>{const n=i.name.toLowerCase();return!names.some(pn=>pn.includes(n)||n.includes(pn))})}
+function guessCat(n){n=n.toLowerCase();
+  if(/pollo|manzo|carne|salsicc|tacchino|prosciutto/.test(n))return'meat';
+  if(/pesce|salmone|tonno|gamber/.test(n))return'fish';
+  if(/latte|formagg|parmigian|yogurt|burro|uova|mozzarel/.test(n))return'dairy';
+  if(/mela|banana|zucchin|pomodor|insalat|verdur|frutta|carota|patat|cipoll/.test(n))return'produce';
+  if(/pane|pizza|focacc|brioche/.test(n))return'bakery';
+  if(/pasta|riso|farina|spaghett|legumi|passata|pelati/.test(n))return'pantry';
+  if(/olio|sale|aceto|salsa/.test(n))return'condiments';
+  if(/acqua|succo|bibita|birra|vino/.test(n))return'beverages';
+  return'other'}
+
+/* ---------- mutations ---------- */
+function addPantry(o){const ex=S.pantry.find(p=>p.name.toLowerCase()===o.name.trim().toLowerCase()&&p.location===o.location&&p.unit===o.unit);
+  if(ex){ex.quantity+=o.quantity;ex.initialQuantity+=o.quantity;ex.price=(ex.price||0)+(o.price||0);ex.updatedAt=new Date().toISOString();persist();return}
+  S.pantry.push({id:uid('pan'),name:o.name.trim(),category:o.category||'other',location:o.location||'pantry',quantity:o.quantity,unit:o.unit||'pcs',
+    initialQuantity:o.initialQuantity||o.quantity,purchaseDate:new Date().toISOString(),expiryDate:o.expiryDate||null,price:o.price,
+    nutrition:o.nutrition,unitWeightG:o.unitWeightG,opened:false,updatedAt:new Date().toISOString()});persist()}
+function consume(id,qty,log=true){const it=S.pantry.find(p=>p.id===id);if(!it)return;const used=Math.min(qty,it.quantity);
+  if(log&&used>0){const saved=it.price&&it.initialQuantity?+((it.price/it.initialQuantity)*used).toFixed(2):0;
+    S.consumption.push({id:uid('con'),name:it.name,quantity:used,unit:it.unit,nutrition:itemNut(it,used),savedValue:saved,date:todayKey()})}
+  it.quantity=+(it.quantity-used).toFixed(2);it.updatedAt=new Date().toISOString();persist()}
+function wasteItem(it,qty,reason){const est=it.price&&it.initialQuantity?+((it.price/it.initialQuantity)*qty).toFixed(2):0;
+  const co2=+(approxKg(qty,it.unit,it.unitWeightG)*CO2[it.category]).toFixed(2);
+  S.waste.push({id:uid('was'),name:it.name,category:it.category,quantity:qty,unit:it.unit,reason,estValue:est,co2,date:todayKey()});
+  consume(it.id,qty,false);persist()}
+function regenShopping(){
+  S.shopping=S.shopping.filter(s=>!(s.auto&&!s.checked));
+  const have=new Set(S.shopping.map(s=>s.name.toLowerCase()));const add=[];
+  const push=(name,cat,reason,qty=1,unit='pcs')=>{const k=name.toLowerCase();if(have.has(k))return;have.add(k);
+    add.push({id:uid('shp'),name,category:cat,quantity:qty,unit,checked:false,auto:true,reason,createdAt:new Date().toISOString()})};
+  S.pantry.forEach(p=>{const r=p.initialQuantity?p.quantity/p.initialQuantity:1;
+    if(p.quantity<=0)push(p.name,p.category,'Terminato',p.initialQuantity||1,p.unit);
+    else if(r<=.25)push(p.name,p.category,'Quasi finito',1,p.unit)});
+  S.meals.filter(m=>!m.cooked&&m.date>=todayKey()&&m.recipeId).forEach(m=>{const r=S.recipes.find(x=>x.id===m.recipeId);if(!r)return;
+    r.ingredients.forEach(i=>{const mt=S.pantry.find(p=>p.name.toLowerCase()===i.name.toLowerCase());if(!mt||mt.quantity<=0)push(i.name,guessCat(i.name),'Ricetta: '+r.title,i.quantity,i.unit)})});
+  S.shopping.push(...add);persist();return add.length}
+function cookMeal(m){const r=S.recipes.find(x=>x.id===m.recipeId);if(!r)return{missing:[]};const f=m.servings/r.servings;const missing=[];
+  r.ingredients.forEach(i=>{const mt=S.pantry.find(p=>{const n=p.name.toLowerCase(),q=i.name.toLowerCase();return n===q||n.includes(q)||q.includes(n)});
+    const need=i.quantity*f;if(mt&&mt.quantity>0){let q=need;if(mt.unit!==i.unit){const g=approxKg(need,i.unit,mt.unitWeightG)*1000;q=mt.unit==='g'?g:mt.unit==='kg'?g/1000:mt.unit==='ml'?g:mt.unit==='l'?g/1000:g/(mt.unitWeightG||150)}consume(mt.id,q)}else missing.push(i.name)});
+  m.cooked=true;persist();return{missing}}
+function genRecipe(ings,c){const main=ings.slice(0,3);const has=re=>ings.some(i=>re.test(i.toLowerCase()));
+  const prot=has(/pollo|manzo|pesce|salmone|tonno|uova|tofu|legumi|ceci/);const carb=has(/pasta|riso|pane|patat|spaghett/);
+  const title=main.length?main[0][0].toUpperCase()+main[0].slice(1)+(main[1]?' con '+main[1]:''):'Piatto svuota-frigo';
+  const minutes=Math.min(c.maxMinutes||25,25);const kcal=Math.min(c.maxKcal||520,520);
+  return{id:uid('rec'),title,description:'Ricetta veloce e bilanciata con '+main.join(', ')+' dalla tua dispensa.',
+    ingredients:ings.map(n=>({name:n,quantity:/olio|sale/.test(n.toLowerCase())?10:150,unit:/olio/.test(n.toLowerCase())?'ml':'g'})),
+    steps:['Prepara e taglia tutti gli ingredienti.',prot?'Rosola la parte proteica in padella con un filo d\'olio.':'Scalda un filo d\'olio in padella.',
+      'Aggiungi '+(main.slice(1).join(', ')||'le verdure')+' e cuoci '+Math.round(minutes/2)+' min.',
+      carb?'Cuoci la parte di carboidrati e unisci il tutto.':'Regola di sale, pepe ed erbe aromatiche.','Manteca, impiatta e servi caldo.'],
+    minutes,difficulty:'easy',servings:c.servings||2,nutrition:{kcal,protein:prot?34:16,carbs:carb?55:24,fat:18},
+    tags:[c.diet&&c.diet!=='none'?c.diet:'svuota-frigo',minutes<=20?'veloce':'facile'],source:'ai',createdAt:new Date().toISOString()}}
+
+/* ---------- render infra ---------- */
+const view=document.getElementById('view');
+const TABS=[['home','Home','home'],['pantry','Dispensa','pantry'],['shopping','Spesa','cart'],['recipes','Ricette','chef'],['planner','Planner','cal']];
+function render(){
+  const t=S.ui.tab;
+  const fn={home:vHome,pantry:vPantry,shopping:vShopping,recipes:vRecipes,planner:vPlanner,fridge:vFridge,diet:vDiet,stats:vStats,assistant:vAssistant}[t]||vHome;
+  view.innerHTML=fn();
+  // tab bar
+  document.getElementById('tab').innerHTML=TABS.map(([k,l,ic])=>`<button data-action="nav" data-tab="${k}" class="${t===k?'on':''}">${svg(ic,23)}<span>${l}</span></button>`).join('');
+  // header bell + theme icons
+  const exp=S.pantry.filter(p=>p.quantity>0&&['critical','expired'].includes(expStatus(p.expiryDate))).length;
+  document.getElementById('bell').innerHTML=svg('bell')+(exp?`<span class="badge-dot">${exp}</span>`:'');
+  const dark=document.documentElement.classList.contains('darkmode')||(themePref()==='dark');
+  document.querySelector('[data-action="theme"]').innerHTML=svg(dark?'sun':'moon');
+  document.querySelector('[data-action="more"]').innerHTML=svg('more');
+  if(focusId){const el=document.getElementById(focusId);if(el){el.focus();try{const v=el.value;el.value='';el.value=v}catch(e){}}focusId=null}
+  window.scrollTo({top:0});
+}
+
+/* ---------- HOME ---------- */
+function vHome(){
+  const active=S.pantry.filter(p=>p.quantity>0);
+  const expiring=active.filter(p=>['expired','critical','soon'].includes(expStatus(p.expiryDate))).sort((a,b)=>(daysUntil(a.expiryDate)??99)-(daysUntil(b.expiryDate)??99));
+  const tk=todayKey();const cons=S.consumption.filter(c=>c.date===tk);
+  const kcal=Math.round(cons.reduce((s,c)=>s+(c.nutrition?.kcal||0),0));const tgt=targets(S.profile).kcal;
+  const saved=cons.reduce((s,c)=>s+(c.savedValue||0),0);
+  const wasted=S.waste.filter(w=>w.date===tk).reduce((s,w)=>s+w.estValue,0);
+  const sugg=S.recipes.map(r=>({r,sc:matchScore(r)+(r.ingredients.some(i=>expiring.some(e=>e.name.toLowerCase().includes(i.name.toLowerCase())||i.name.toLowerCase().includes(e.name.toLowerCase())))?.4:0)})).sort((a,b)=>b.sc-a.sc).slice(0,3);
+  const h=new Date().getHours();const greet=h<12?'Buongiorno':h<18?'Buon pomeriggio':'Buonasera';
+  return `
+  <p class="eyebrow">${greet} 👋</p>
+  <h1 class="title">La tua cucina</h1>
+  <div class="quick" style="margin-top:18px">
+    ${[['pantry','pantry','Dispensa'],['recipes','chef','Ricette'],['shopping','cart','Spesa'],['assistant','spark','Assistente']].map(([t,ic,l])=>`<button data-action="nav" data-tab="${t}"><span class="qi">${svg(ic,22)}</span><small>${l}</small></button>`).join('')}
+  </div>
+  <div class="grid g2" style="margin-top:12px">
+    ${ringStat(tgt?kcal/tgt*100:0,kcal,'kcal','di '+tgt+' oggi')}
+    ${stat('warn','--warning',expiring.length,'In scadenza')}
+    ${stat('leaf','--success',money(saved),'Risparmiati oggi')}
+    ${stat('flame','--danger',money(wasted),'Sprecati oggi')}
+  </div>
+  <section>
+    <div class="sechead"><h2>Da consumare presto</h2><button class="link" data-action="nav" data-tab="pantry">Dispensa</button></div>
+    ${expiring.length?`<div class="hscroll">${expiring.slice(0,8).map(it=>{const c=EXPC[expStatus(it.expiryDate)];return `<div class="card" style="width:150px;flex-shrink:0;padding:13px"><div class="row" style="justify-content:space-between"><span style="font-size:24px">${CAT[it.category][1]}</span><span class="tnum" style="font-size:11px;font-weight:800;color:rgb(var(${c}))">${expStatus(it.expiryDate)==='expired'?'Scaduto':relDay(it.expiryDate)}</span></div><p style="font-weight:700;font-size:14px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</p><p style="font-size:12px;color:rgb(var(--faint));margin-top:2px">${qtyStr(it)}</p></div>`}).join('')}</div>`
+      :emptyBox('✅','Tutto sotto controllo','Nessun prodotto sta per scadere.')}
+  </section>
+  <section>
+    <div class="sechead"><h2>Cosa cucino oggi?</h2><button class="link" data-action="nav" data-tab="recipes">Tutte</button></div>
+    <div class="grid">${sugg.map(({r,sc})=>`<button class="card" data-action="recipe" data-id="${r.id}" style="padding:15px;text-align:left;cursor:pointer;border:1px solid rgb(var(--border));color:inherit"><div class="row" style="justify-content:space-between"><span style="font-size:26px">🍽️</span><span class="pill" style="background:rgb(var(--brand)/.12);color:rgb(var(--brand))">${Math.round(Math.min(sc,1)*100)}% pronto</span></div><p style="font-weight:700;margin-top:8px">${esc(r.title)}</p><p style="font-size:12px;color:rgb(var(--muted));margin-top:4px">${r.minutes} min · ${r.nutrition.kcal} kcal · ${r.nutrition.protein}g prot.</p></button>`).join('')}</div>
+  </section>`;
+}
+function stat(ic,col,v,l){return `<div class="card stat"><span class="ic" style="color:rgb(var(${col}))">${svg(ic,20)}</span><div class="v tnum">${v}</div><div class="l">${l}</div></div>`}
+function ringStat(pct,val,unit,sub){pct=Math.max(0,Math.min(100,pct));const r=22,c=2*Math.PI*r,off=c-pct/100*c;
+  return `<div class="card stat" style="display:flex;flex-direction:row;align-items:center;gap:12px"><svg class="ring" width="58" height="58"><circle cx="29" cy="29" r="${r}" stroke="rgb(var(--surface2))" stroke-width="6" fill="none"/><circle cx="29" cy="29" r="${r}" stroke="rgb(var(--brand))" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg><div><div class="v tnum">${val}<span style="font-size:12px;color:rgb(var(--faint));font-weight:600"> ${unit}</span></div><div class="l">${sub}</div></div></div>`}
+const qtyStr=it=>(Math.round(it.quantity*100)/100)+' '+UNITS[it.unit];
+function emptyBox(ic,t,s,btn){return `<div class="empty"><div class="e-ic">${ic}</div><p>${t}</p><small>${s}</small>${btn||''}</div>`}
+
+/* ---------- PANTRY ---------- */
+function vPantry(){
+  const q=S.ui.pantryQ.toLowerCase(),cat=S.ui.pantryCat,ex=S.ui.pantryExp;
+  let items=S.pantry.slice().sort((a,b)=>(a.expiryDate||'z').localeCompare(b.expiryDate||'z'));
+  items=items.filter(i=>{if(q&&!i.name.toLowerCase().includes(q))return false;if(cat!=='all'&&i.category!==cat)return false;
+    const s=expStatus(i.expiryDate),r=i.initialQuantity?i.quantity/i.initialQuantity:1;
+    if(ex==='soon'&&!['soon','critical'].includes(s))return false;if(ex==='expired'&&s!=='expired')return false;
+    if(ex==='low'&&!(i.quantity>0&&r<=.25))return false;if(ex==='out'&&i.quantity>0)return false;if(ex==='opened'&&!i.opened)return false;return true});
+  const cats=CATK.filter(c=>S.pantry.some(i=>i.category===c));
+  const expF=[['all','Tutti'],['soon','In scadenza'],['expired','Scaduti'],['low','Quasi finiti'],['out','Terminati'],['opened','Aperti']];
+  return `
+  <div class="row" style="justify-content:space-between"><div><h1 class="title">Dispensa</h1><p class="sub">${S.pantry.filter(i=>i.quantity>0).length} prodotti attivi</p></div>
+    <button class="btn pri" data-action="additem">${svg('plus',18)} Aggiungi</button></div>
+  <div class="fgroup" style="position:relative"><span style="position:absolute;left:13px;top:13px;color:rgb(var(--faint))">${svg('search',18)}</span>
+    <input class="input" id="psearch" style="padding-left:40px" placeholder="Cerca un prodotto…" value="${esc(S.ui.pantryQ)}" oninput="onSearch(this.value)"></div>
+  <div class="chips" style="margin-top:12px">${expF.map(([k,l])=>`<button class="chip ${ex===k?'on':''}" data-action="pexp" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="chips" style="margin-top:8px"><button class="chip ${cat==='all'?'on':''}" data-action="pcat" data-v="all">Tutte</button>${cats.map(c=>`<button class="chip ${cat===c?'on':''}" data-action="pcat" data-v="${c}">${CAT[c][1]} ${CAT[c][0]}</button>`).join('')}</div>
+  <div class="grid g2" style="margin-top:16px">${items.length?items.map(pantryCard).join(''):''}</div>
+  ${items.length?'':emptyBox('📦','Nessun prodotto','Aggiungi prodotti o cambia i filtri.','<div style="margin-top:14px"><button class="btn pri" data-action="additem">'+svg('plus',18)+' Aggiungi</button></div>')}`;
+}
+function pantryCard(it){const s=expStatus(it.expiryDate),c=EXPC[s];const r=it.initialQuantity?it.quantity/it.initialQuantity:1;const low=it.quantity>0&&r<=.25;
+  return `<div class="card item"><div class="top"><div class="thumb" style="background:${CAT[it.category][2]}22">${CAT[it.category][1]}</div>
+    <button style="flex:1;text-align:left;background:none;border:none;min-width:0;cursor:pointer;color:inherit" data-action="edititem" data-id="${it.id}"><div class="iname">${esc(it.name)}</div><div class="imeta">${LOC[it.location][0]}</div></button>
+    <button class="iconbtn" style="width:30px;height:30px" data-action="wasteitem" data-id="${it.id}" title="Sprecato">${svg('trash',15)}</button></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${s!=='none'&&s!=='ok'?`<span class="pill" style="background:rgb(var(${c})/.14);color:rgb(var(${c}))">${s==='expired'?'Scaduto':relDay(it.expiryDate)}</span>`:s==='ok'?`<span style="font-size:11px;color:rgb(var(--faint))">Scade ${relDay(it.expiryDate)}</span>`:''}${low?'<span class="pill" style="background:rgb(var(--warning)/.14);color:rgb(var(--warning))">Quasi finito</span>':''}${it.quantity<=0?'<span class="pill" style="background:rgb(var(--danger)/.14);color:rgb(var(--danger))">Terminato</span>':''}${it.opened?'<span class="pill" style="background:rgb(var(--info)/.14);color:rgb(var(--info))">Aperto</span>':''}</div>
+    <div class="row" style="justify-content:space-between"><div class="stepper"><button data-action="dec" data-id="${it.id}">−</button><span class="val tnum">${qtyStr(it)}</span><button data-action="inc" data-id="${it.id}">+</button></div>${it.price&&it.initialQuantity?`<span style="font-size:12px;color:rgb(var(--faint));font-weight:600">${money(it.price/it.initialQuantity*it.quantity)}</span>`:''}</div></div>`;
+}
+function onSearch(v){S.ui.pantryQ=v;focusId='psearch';render()}
+
+/* ---------- FRIDGE ---------- */
+function vFridge(){const loc=S.ui.fridgeLoc;const inl=S.pantry.filter(i=>i.location===loc&&i.quantity>0);
+  const shelves=[[],[],[]];inl.forEach((it,i)=>shelves[i%3].push(it));
+  return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Frigo virtuale</h1><p class="sub">Una vista dei tuoi spazi</p></div><button class="btn sec" data-action="additem">${svg('plus',18)}</button></div>
+  <div class="chips" style="margin-top:14px">${Object.keys(LOC).map(k=>`<button class="chip ${loc===k?'on':''}" data-action="floc" data-v="${k}">${LOC[k][1]} ${LOC[k][0]}</button>`).join('')}</div>
+  <div class="card" style="margin-top:16px;padding:12px;background:linear-gradient(180deg,rgb(var(--surface)),rgb(var(--surface2)))">
+    <div class="row" style="justify-content:space-between;padding:2px 6px 10px"><b style="font-size:14px">${LOC[loc][0]}</b><span style="font-size:12px;color:rgb(var(--muted))">${inl.length} prodotti</span></div>
+    <div class="grid" style="gap:10px">${shelves.map(sh=>`<div class="shelf">${sh.length?`<div class="hscroll" style="gap:8px">${sh.map(fitem).join('')}</div>`:'<div style="display:grid;place-items:center;height:46px;font-size:12px;color:rgb(var(--faint))">Ripiano vuoto</div>'}</div>`).join('')}</div>
+  </div>
+  <div class="row" style="justify-content:center;gap:18px;margin-top:14px;font-size:12px;color:rgb(var(--muted))">
+    ${[['--success','Fresco'],['--warning','In scadenza'],['--danger','Urgente']].map(([c,l])=>`<span class="row" style="gap:6px"><span style="width:9px;height:9px;border-radius:99px;background:rgb(var(${c}))"></span>${l}</span>`).join('')}</div>`;
+}
+function fitem(it){const s=expStatus(it.expiryDate),c=EXPC[s];return `<button class="fitem" data-action="edititem" data-id="${it.id}"><span class="st" style="background:rgb(var(${c}))"></span><span style="font-size:22px">${CAT[it.category][1]}</span><span class="fn">${esc(it.name)}</span><span class="fq tnum">${qtyStr(it)}</span></button>`}
+
+/* ---------- SHOPPING ---------- */
+function vShopping(){const items=S.shopping;const checked=items.filter(i=>i.checked).length;
+  const groups={};items.forEach(i=>{(groups[i.category]=groups[i.category]||[]).push(i)});
+  return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Lista spesa</h1><p class="sub">${items.length} articoli</p></div><button class="btn sec" data-action="regenshop">${svg('spark',18)} Genera</button></div>
+  <div class="card" style="margin-top:14px;padding:11px"><div class="row" style="gap:8px"><input class="input" id="shopinput" placeholder="Aggiungi articolo…" onkeydown="if(event.key==='Enter')addShopManual(this.value,this)"><button class="btn pri" data-action="addshopbtn">${svg('plus',18)}</button></div></div>
+  ${items.length?CATK.filter(c=>groups[c]).map(c=>`<div style="margin-top:16px"><p style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:rgb(var(--faint));margin-bottom:8px">${CAT[c][1]} ${CAT[c][0]}</p><div class="card" style="overflow:hidden">${groups[c].map((it,i)=>`<div class="row" style="padding:12px;gap:12px;${i?'border-top:1px solid rgb(var(--border))':''};${it.checked?'opacity:.55':''}"><div class="checkbox ${it.checked?'on':''}" data-action="togshop" data-id="${it.id}">${it.checked?svg('check',14):''}</div><div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:600;${it.checked?'text-decoration:line-through':''};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</p>${it.reason?`<p style="font-size:11px;color:rgb(var(--faint))">${it.auto?'🤖 ':''}${esc(it.reason)}</p>`:''}</div><span style="font-size:12px;color:rgb(var(--muted))" class="tnum">${it.quantity} ${UNITS[it.unit]}</span><button class="iconbtn" style="width:28px;height:28px" data-action="delshop" data-id="${it.id}">${svg('trash',15)}</button></div>`).join('')}</div></div>`).join('')
+    :emptyBox('🛒','Lista vuota','Aggiungi articoli o generali dalla dispensa.','<div style="margin-top:14px"><button class="btn pri" data-action="regenshop">'+svg('spark',18)+' Genera automaticamente</button></div>')}
+  ${checked?`<div style="position:sticky;bottom:104px;margin-top:18px;display:flex;gap:8px"><button class="btn sec block" data-action="clearchecked">Rimuovi ${checked}</button><button class="btn pri block" data-action="completeshop">${svg('check',18)} In dispensa</button></div>`:''}`;
+}
+function addShopManual(v,el){v=v.trim();if(!v)return;S.shopping.push({id:uid('shp'),name:v,category:guessCat(v),quantity:1,unit:'pcs',checked:false,auto:false,createdAt:new Date().toISOString()});persist();focusId='shopinput';render()}
+
+/* ---------- RECIPES ---------- */
+function vRecipes(){const list=S.recipes.map(r=>({r,sc:matchScore(r)})).sort((a,b)=>b.sc-a.sc);
+  return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Ricette</h1><p class="sub">${S.recipes.length} ricette · AI o salvate</p></div><button class="btn pri" data-action="genrecipe">${svg('spark',18)} Genera</button></div>
+  <div class="grid g2" style="margin-top:16px">${list.map(({r,sc})=>`<button class="card" data-action="recipe" data-id="${r.id}" style="padding:14px;text-align:left;cursor:pointer;color:inherit;border:1px solid rgb(var(--border))"><div class="row" style="justify-content:space-between"><span style="font-size:26px">🍽️</span><span class="pill" style="background:rgb(var(--brand)/.12);color:rgb(var(--brand))">${Math.round(sc*100)}%</span></div><p style="font-weight:700;margin-top:8px;line-height:1.15">${esc(r.title)}</p><p style="font-size:12px;color:rgb(var(--muted));margin-top:6px">${r.minutes}m · ${r.nutrition.kcal} kcal · ${r.nutrition.protein}g P ${r.favorite?'· ❤️':''}${r.source==='ai'?' · ✨':''}</p></button>`).join('')}</div>`;
+}
+
+/* ---------- PLANNER ---------- */
+function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=days.includes(S.ui.selDay)?S.ui.selDay:days[0];
+  const tk=todayKey();const dayMeals=m=>S.meals.filter(x=>x.date===sel&&x.meal===m);
+  const weekMeals=S.meals.filter(m=>days.includes(m.date));
+  const wk=weekMeals.reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
+  return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Planner</h1><p class="sub">Pianifica la settimana</p></div>
+    <div class="row" style="gap:4px"><button class="iconbtn" data-action="week" data-v="-1">‹</button><button class="chip" data-action="week" data-v="0">Oggi</button><button class="iconbtn" data-action="week" data-v="1">›</button></div></div>
+  <div class="weekstrip" style="margin-top:14px">${days.map((d,i)=>{const dm=S.meals.filter(m=>m.date===d);const kc=Math.round(dm.reduce((s,m)=>s+(m.nutrition?.kcal||0),0));return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="font-size:9px;color:rgb(var(--faint));margin-top:2px" class="tnum">${kc||''}</div></button>`}).join('')}</div>
+  <div class="card" style="margin-top:16px;padding:6px 14px">${Object.keys(MEALS).map(meal=>{const cm=dayMeals(meal);return `<div class="mealrow"><div class="mlab">${MEALS[meal]}</div><div style="flex:1;min-width:0">${cm.map(m=>`<div class="mealchip ${m.cooked?'cooked':''}" data-action="meal" data-id="${m.id}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title)}</span><span style="font-size:11px;opacity:.8">${m.nutrition?Math.round(m.nutrition.kcal)+'kcal':''}</span></div>`).join('')}<button class="addmini" data-action="addmeal" data-meal="${meal}" data-date="${sel}">+ Aggiungi</button></div></div>`}).join('')}</div>
+  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:12px">Riepilogo settimana</p><div class="grid g4">${[['Media kcal',Math.round(wk.kcal/7)],['Prot',Math.round(wk.p)+'g'],['Carb',Math.round(wk.c)+'g'],['Grassi',Math.round(wk.f)+'g']].map(([l,v])=>`<div><div style="font-size:18px;font-weight:800" class="tnum">${v}</div><div style="font-size:11px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`;
+}
+
+/* ---------- DIET ---------- */
+function vDiet(){const p=S.profile;const t=targets(p);
+  const macros=[['Proteine',t.protein,'--info',t.protein*4],['Carboidrati',t.carbs,'--warning',t.carbs*4],['Grassi',t.fat,'--danger',t.fat*9]];
+  const GOALS=[['lose','Dimagrire','📉'],['maintain','Mantenere','⚖️'],['gain','Aumentare','📈'],['muscle','Massa','💪']];
+  const ACTS=[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']];
+  const DIETS=[['none','Onnivora'],['vegetarian','Vegetariana'],['vegan','Vegana'],['mediterranean','Mediterranea'],['keto','Keto']];
+  const r=32,c=2*Math.PI*r;
+  return `<h1 class="title">Dieta</h1><p class="sub">Piano su misura per te</p>
+  <div class="card" style="margin-top:16px;overflow:hidden"><div style="background:linear-gradient(135deg,rgb(var(--brand)/.16),transparent);padding:20px"><div class="row" style="gap:18px"><svg class="ring" width="90" height="90"><circle cx="45" cy="45" r="${r}" stroke="rgb(var(--surface2))" stroke-width="9" fill="none"/><circle cx="45" cy="45" r="${r}" stroke="rgb(var(--brand))" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0"/><text x="45" y="42" transform="rotate(90 45 45)" text-anchor="middle" fill="rgb(var(--fg))" font-size="19" font-weight="800">${t.kcal}</text><text x="45" y="58" transform="rotate(90 45 45)" text-anchor="middle" fill="rgb(var(--faint))" font-size="9">kcal/g</text></svg>
+    <div style="flex:1">${macros.map(([l,g,col,kc])=>`<div style="margin-bottom:8px"><div class="row" style="justify-content:space-between;font-size:12px"><span style="font-weight:600">${l}</span><span style="color:rgb(var(--muted))" class="tnum">${g}g</span></div><div class="macrobar"><span style="width:${kc/t.kcal*100}%;background:rgb(var(${col}))"></span></div></div>`).join('')}</div></div></div></div>
+  <div class="card" style="margin-top:16px;padding:18px">
+    <div class="chips" style="margin-bottom:14px">${[['female','Donna'],['male','Uomo']].map(([k,l])=>`<button class="chip ${p.sex===k?'on':''}" data-action="dsex" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="grid g3">${[['age','Età','anni'],['heightCm','Altezza','cm'],['weightKg','Peso','kg']].map(([k,l,u])=>`<div><label class="lab">${l}</label><input class="input" type="number" value="${p[k]}" onchange="dset('${k}',+this.value)" style="padding:10px"></div>`).join('')}</div>
+    <div class="fgroup"><label class="lab">Obiettivo</label><div class="loc3" style="grid-template-columns:1fr 1fr 1fr 1fr">${GOALS.map(([k,l,e])=>`<button class="loctile ${p.goal===k?'on':''}" data-action="dgoal" data-v="${k}"><span class="em">${e}</span>${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Attività</label><div class="catgrid">${ACTS.map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-action="dact" data-v="${k}">${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Regime</label><div class="catgrid">${DIETS.map(([k,l])=>`<button class="chip ${p.diet===k?'on':''}" data-action="ddiet" data-v="${k}">${l}</button>`).join('')}</div></div>
+  </div>
+  <button class="btn pri block" style="margin-top:16px" data-action="genplan">${svg('spark',18)} Genera piano settimanale</button>`;
+}
+
+/* ---------- STATS ---------- */
+function vStats(){const days=weekDays(0);const tk=todayKey();
+  const daily=days.map(d=>{const cs=S.consumption.filter(c=>c.date===d);return{d,kcal:Math.round(cs.reduce((s,c)=>s+(c.nutrition?.kcal||0),0))}});
+  const maxK=Math.max(...daily.map(x=>x.kcal),1);
+  const wasteAll=S.waste;const moneyW=wasteAll.reduce((s,w)=>s+w.estValue,0);const co2=wasteAll.reduce((s,w)=>s+w.co2,0);
+  const kgW=wasteAll.reduce((s,w)=>s+approxKg(w.quantity,w.unit),0);
+  const saved=S.consumption.reduce((s,c)=>s+(c.savedValue||0),0);const savedN=S.consumption.filter(c=>(c.savedValue||0)>0).length;
+  const pantryVal=S.pantry.filter(p=>p.quantity>0&&p.price&&p.initialQuantity).reduce((s,p)=>s+p.price/p.initialQuantity*p.quantity,0);
+  const wCat={};wasteAll.forEach(w=>wCat[w.category]=(wCat[w.category]||0)+w.estValue);const wArr=Object.entries(wCat).sort((a,b)=>b[1]-a[1]);
+  return `<h1 class="title">Statistiche</h1><p class="sub">Progressi, risparmi e sprechi</p>
+  <div class="grid g2" style="margin-top:16px">${stat('euro','--success',money(saved),'Risparmiati')}${stat('flame','--danger',money(moneyW),'Sprecati')}${stat('cart','--info',S.consumption.length,'Consumati')}${stat('leaf','--brand',kgW.toFixed(1)+'kg','Cibo sprecato')}</div>
+  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:14px">Calorie (settimana)</p>
+    <div style="display:flex;align-items:flex-end;gap:8px;height:120px">${daily.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;border-radius:7px 7px 0 0;background:${x.d===tk?'rgb(var(--brand))':'rgb(var(--brand)/.35)'};height:${Math.max(x.kcal/maxK*100,2)}%;transition:.4s"></div><span style="font-size:10px;color:rgb(var(--faint))">${DOW[days.indexOf(x.d)]}</span></div>`).join('')}</div>
+    ${daily.every(x=>!x.kcal)?'<p style="text-align:center;font-size:12px;color:rgb(var(--faint));margin-top:10px">Cucina o consuma prodotti per popolare il grafico</p>':''}</div>
+  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:12px">Sprechi per categoria</p>${wArr.length?wArr.map(([c,v])=>`<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${CAT[c][1]} ${CAT[c][0]}</span><span class="tnum" style="color:rgb(var(--danger))">${money(v)}</span></div><div class="macrobar"><span style="width:${v/moneyW*100}%;background:${CAT[c][2]}"></span></div></div>`).join(''):'<div style="text-align:center;padding:20px"><div style="font-size:30px">🎉</div><p style="font-weight:700;margin-top:6px">Nessuno spreco!</p><p style="font-size:12px;color:rgb(var(--muted))">Continua a consumare tutto in tempo</p></div>'}</div>
+  <div class="card" style="margin-top:16px;padding:16px"><div class="row" style="gap:8px"><span style="color:rgb(var(--brand))">${svg('leaf',20)}</span><b>Impatto ambientale</b></div><p style="font-size:13px;color:rgb(var(--muted));margin-top:8px">Hai emesso <b style="color:rgb(var(--fg))">${co2.toFixed(1)}kg</b> di CO₂ per il cibo sprecato e salvato <b style="color:rgb(var(--fg))">${savedN}</b> alimenti prima della scadenza. Valore attuale della dispensa: <b style="color:rgb(var(--fg))">${money(pantryVal)}</b>.</p></div>`;
+}
+
+/* ---------- ASSISTANT ---------- */
+let chat=[{r:'a',t:'Ciao! Sono il tuo assistente di cucina. Chiedimi cosa cucinare, cosa sta per scadere o cosa comprare.'}];
+function vAssistant(){
+  return `<div class="row" style="gap:10px"><span style="width:36px;height:36px;border-radius:11px;background:rgb(var(--brand)/.12);color:rgb(var(--brand));display:grid;place-items:center">${svg('spark',20)}</span><div><h1 style="font-size:19px;font-weight:800">Assistente</h1><p class="sub">Conosce la tua dispensa</p></div></div>
+  <div id="chatlog" style="margin-top:16px;display:flex;flex-direction:column;gap:10px">${chat.map(m=>`<div style="display:flex;justify-content:${m.r==='u'?'flex-end':'flex-start'}"><div style="max-width:85%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.4;${m.r==='u'?'background:rgb(var(--brand));color:rgb(var(--brandfg));border-bottom-right-radius:5px':'background:rgb(var(--surface));border:1px solid rgb(var(--border));border-bottom-left-radius:5px'}">${esc(m.t)}</div></div>`).join('')}</div>
+  ${chat.length<=1?`<div class="chips" style="margin-top:12px;flex-wrap:wrap;overflow:visible">${['Cosa cucino stasera?','Cosa sta per scadere?','Cosa devo comprare?','Quante proteine oggi?'].map(s=>`<button class="chip" data-action="asksugg" data-q="${esc(s)}">${s}</button>`).join('')}</div>`:''}
+  <div class="row" style="gap:8px;margin-top:16px"><input class="input" id="askinput" placeholder="Scrivi un messaggio…" onkeydown="if(event.key==='Enter')ask(this.value)"><button class="btn pri" data-action="askbtn">${svg('send',18)}</button></div>`;
+}
+function ask(q){q=(q||'').trim();if(!q)return;chat.push({r:'u',t:q});chat.push({r:'a',t:answer(q)});render()}
+function answer(q){const low=q.toLowerCase();const active=S.pantry.filter(p=>p.quantity>0);
+  const exp=active.filter(p=>['expired','critical','soon'].includes(expStatus(p.expiryDate)));
+  const tk=todayKey();const cons=S.consumption.filter(c=>c.date===tk);
+  const kcal=Math.round(cons.reduce((s,c)=>s+(c.nutrition?.kcal||0),0));const prot=Math.round(cons.reduce((s,c)=>s+(c.nutrition?.protein||0),0));const t=targets(S.profile);
+  if(/scad/.test(low))return exp.length?`Stanno per scadere: ${exp.map(e=>e.name).join(', ')}. Usali oggi o domani — apri le Ricette per un'idea.`:'Nessun prodotto sta per scadere. Ottimo lavoro!';
+  if(/cucino|cena|pranzo|mangio|stasera/.test(low)){const best=S.recipes.map(r=>({r,s:matchScore(r)})).sort((a,b)=>b.s-a.s)[0];return best?`Con quello che hai puoi preparare "${best.r.title}" (${best.r.minutes} min, ${best.r.nutrition.kcal} kcal). Vai in Ricette per vederla.`:'Genera una ricetta AI dalla sezione Ricette.'}
+  if(/comprare|spesa|manca/.test(low)){const n=regenShopping();return `Ho aggiornato la lista della spesa${n?` con ${n} prodotti`:''}. Trovi tutto nella sezione Spesa.`}
+  if(/protein|calorie|macro/.test(low))return `Oggi: circa ${kcal} kcal e ${prot}g di proteine, su un obiettivo di ${t.kcal} kcal e ${t.protein}g di proteine.`;
+  if(/rimast|quanto/.test(low)){const m=active.find(p=>low.includes(p.name.toLowerCase().split(' ')[0]));return m?`Hai ${qtyStr(m)} di ${m.name}.`:`In dispensa hai: ${active.slice(0,8).map(p=>p.name).join(', ')}.`}
+  return `Posso aiutarti con dispensa, ricette, scadenze e spesa. Ora hai ${active.length} prodotti attivi${exp.length?`, di cui ${exp.length} in scadenza`:''}.`}
+
+/* ---------- MODALS ---------- */
+const modroot=document.getElementById('modroot');
+function openSheet(html){modroot.innerHTML=`<div class="scrim" data-close="1"></div><div class="sheet"><div class="grab"></div>${html}</div>`;modroot.classList.add('show')}
+function closeSheet(){modroot.classList.remove('show');modroot.innerHTML=''}
+modroot.addEventListener('click',e=>{if(e.target.dataset.close)closeSheet()});
+
+function itemForm(it){const e=it||{name:'',category:'produce',location:'fridge',quantity:1,unit:'pcs',price:'',expiryDate:''};
+  openSheet(`<h3>${it?'Modifica prodotto':'Nuovo prodotto'}</h3>
+    <div class="fgroup"><label class="lab">Nome</label><input class="input" id="f_name" value="${esc(e.name)}" placeholder="es. Petto di pollo"></div>
+    <div class="fgroup"><label class="lab">Categoria</label><div class="catgrid" id="f_cat">${CATK.map(c=>`<button class="chip ${e.category===c?'on':''}" data-pick="${c}">${CAT[c][1]} ${CAT[c][0]}</button>`).join('')}</div></div>
+    <div class="grid g3 fgroup"><div><label class="lab">Quantità</label><input class="input" id="f_qty" type="number" step="0.1" value="${e.quantity}" style="padding:10px"></div>
+      <div><label class="lab">Unità</label><select class="input" id="f_unit" style="padding:10px">${UK.map(u=>`<option value="${u}" ${e.unit===u?'selected':''}>${UNITS[u]}</option>`).join('')}</select></div>
+      <div><label class="lab">Prezzo €</label><input class="input" id="f_price" type="number" step="0.01" value="${e.price??''}" placeholder="—" style="padding:10px"></div></div>
+    <div class="fgroup"><label class="lab">Posizione</label><div class="loc3" id="f_loc">${Object.keys(LOC).map(l=>`<button class="loctile ${e.location===l?'on':''}" data-pick="${l}"><span class="em">${LOC[l][1]}</span>${LOC[l][0]}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Scadenza</label><input class="input" id="f_exp" type="date" value="${e.expiryDate?e.expiryDate.slice(0,10):''}"></div>
+    <div class="row" style="gap:8px;margin-top:18px"><button class="btn sec block" data-close="1">Annulla</button><button class="btn pri block" data-action="saveitem" data-id="${it?it.id:''}">${it?'Salva':'Aggiungi'}</button></div>`);
+  let cat=e.category,loc=e.location;
+  modroot.querySelector('#f_cat').addEventListener('click',ev=>{const b=ev.target.closest('[data-pick]');if(!b)return;cat=b.dataset.pick;modroot.querySelectorAll('#f_cat .chip').forEach(x=>x.classList.toggle('on',x===b))});
+  modroot.querySelector('#f_loc').addEventListener('click',ev=>{const b=ev.target.closest('[data-pick]');if(!b)return;loc=b.dataset.pick;modroot.querySelectorAll('#f_loc .loctile').forEach(x=>x.classList.toggle('on',x===b))});
+  modroot._get=()=>({name:modroot.querySelector('#f_name').value,category:cat,location:loc,quantity:+modroot.querySelector('#f_qty').value||0,
+    unit:modroot.querySelector('#f_unit').value,price:modroot.querySelector('#f_price').value===''?undefined:+modroot.querySelector('#f_price').value,
+    expiryDate:modroot.querySelector('#f_exp').value?new Date(modroot.querySelector('#f_exp').value).toISOString():null})}
+
+function recipeSheet(r){const miss=missingIng(r);const missN=new Set(miss.map(m=>m.name));
+  openSheet(`<h3>${esc(r.title)}</h3><p style="font-size:13px;color:rgb(var(--muted));margin-top:2px">${esc(r.description||'')}</p>
+    <div class="chips" style="margin-top:10px;flex-wrap:wrap;overflow:visible"><button class="chip ${r.favorite?'on':''}" data-action="fav" data-id="${r.id}">${svg('heart',13)} ${r.favorite?'Preferita':'Salva'}</button>${r.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}${r.source!=='seed'?`<button class="chip" style="color:rgb(var(--danger))" data-action="delrecipe" data-id="${r.id}">${svg('trash',13)} Elimina</button>`:''}</div>
+    <div class="card" style="margin-top:14px;padding:14px;background:rgb(var(--surface2))"><div class="grid g4" style="text-align:center">${[['kcal',r.nutrition.kcal],['Prot',r.nutrition.protein],['Carb',r.nutrition.carbs],['Grassi',r.nutrition.fat]].map(([l,v])=>`<div><div style="font-weight:800" class="tnum">${Math.round(v)}</div><div style="font-size:10px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div><p style="text-align:center;font-size:10px;color:rgb(var(--faint));margin-top:8px">per porzione · ${r.minutes} min · ${r.servings} porz.</p></div>
+    <div class="fgroup"><div class="row" style="justify-content:space-between;margin-bottom:8px"><label class="lab" style="margin:0">Ingredienti</label>${miss.length?`<button class="link" data-action="missshop" data-id="${r.id}">${svg('cart',13)} +${miss.length} mancanti</button>`:''}</div>
+      ${r.ingredients.map(i=>`<div class="row" style="justify-content:space-between;padding:6px 2px;font-size:14px"><span class="row" style="gap:8px"><span style="width:7px;height:7px;border-radius:99px;background:rgb(var(${missN.has(i.name)?'--danger':'--success'}))"></span>${esc(i.name)}</span><span style="color:rgb(var(--muted))" class="tnum">${i.quantity} ${UNITS[i.unit]||i.unit}</span></div>`).join('')}</div>
+    <div class="fgroup"><label class="lab">Preparazione</label>${r.steps.map((s,i)=>`<div class="row" style="gap:11px;align-items:flex-start;margin-bottom:10px"><span style="width:24px;height:24px;flex-shrink:0;border-radius:99px;background:rgb(var(--brand)/.12);color:rgb(var(--brand));display:grid;place-items:center;font-size:12px;font-weight:800">${i+1}</span><span style="font-size:14px;padding-top:2px">${esc(s)}</span></div>`).join('')}</div>
+    <div class="row" style="gap:8px;margin-top:16px"><button class="btn sec block" data-action="cooknow" data-id="${r.id}">👨‍🍳 Cucina ora</button><button class="btn pri block" data-action="planrecipe" data-id="${r.id}">${svg('cal',16)} Pianifica</button></div>`);
+}
+
+function genSheet(){const names=S.pantry.filter(p=>p.quantity>0).slice(0,6).map(p=>p.name).join(', ');
+  openSheet(`<h3>Genera ricetta AI</h3>
+    <div class="fgroup"><label class="lab">Ingredienti che hai</label><textarea class="input" id="g_ing" style="height:72px;resize:none" placeholder="pollo, zucchine…">${esc(names)}</textarea></div>
+    <div class="grid g2 fgroup"><div><label class="lab">Max minuti</label><input class="input" id="g_min" type="number" placeholder="es. 20" style="padding:10px"></div><div><label class="lab">Max kcal</label><input class="input" id="g_kcal" type="number" placeholder="es. 500" style="padding:10px"></div></div>
+    <div class="fgroup"><label class="lab">Dieta</label><div class="catgrid" id="g_diet">${[['none','Nessuna'],['vegetarian','Vegetariana'],['vegan','Vegana'],['mediterranean','Mediterranea'],['keto','Keto']].map((d,i)=>`<button class="chip ${i===0?'on':''}" data-pick="${d[0]}">${d[1]}</button>`).join('')}</div></div>
+    <p style="font-size:12px;color:rgb(var(--muted));background:rgb(var(--surface2));padding:11px;border-radius:12px;margin-top:14px">💡 Usa prima gli ingredienti in scadenza per ridurre gli sprechi.</p>
+    <button class="btn pri block" style="margin-top:16px" data-action="dogen">✨ Genera ricetta</button>`);
+  let diet='none';modroot.querySelector('#g_diet').addEventListener('click',ev=>{const b=ev.target.closest('[data-pick]');if(!b)return;diet=b.dataset.pick;modroot.querySelectorAll('#g_diet .chip').forEach(x=>x.classList.toggle('on',x===b))});
+  modroot._gen=()=>({ings:modroot.querySelector('#g_ing').value.split(',').map(s=>s.trim()).filter(Boolean),maxMinutes:+modroot.querySelector('#g_min').value||undefined,maxKcal:+modroot.querySelector('#g_kcal').value||undefined,diet})}
+
+function mealPicker(date,meal){const rs=S.recipes;
+  openSheet(`<h3>${MEALS[meal]} · ${new Date(date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric'})}</h3>
+    <div class="rlist" style="margin-top:14px;max-height:50vh;overflow-y:auto">${rs.map(r=>`<button data-action="pickmeal" data-id="${r.id}" data-date="${date}" data-meal="${meal}"><span style="font-size:22px">🍽️</span><div style="flex:1;min-width:0"><p style="font-size:14px;font-weight:600">${esc(r.title)}</p><p style="font-size:11px;color:rgb(var(--muted))">${r.minutes}m · ${r.nutrition.kcal} kcal</p></div><span style="color:rgb(var(--brand))">${svg('plus',18)}</span></button>`).join('')}</div>
+    <div class="row" style="gap:8px;margin-top:8px"><input class="input" id="custommeal" placeholder="Pasto libero (es. Insalata)"><button class="btn sec" data-action="addcustommeal" data-date="${date}" data-meal="${meal}">${svg('plus',18)}</button></div>`);
+}
+
+function moreSheet(){openSheet(`<h3>Altro</h3><div style="margin-top:8px">${[['fridge','fridge','Frigo virtuale'],['diet','user','Dieta personalizzata'],['stats','chart','Statistiche'],['assistant','spark','Assistente AI']].map(([t,ic,l])=>`<div class="more-item" data-action="nav" data-tab="${t}"><span class="mi">${svg(ic,20)}</span>${l}</div>`).join('')}<div class="more-item" data-action="resetdata"><span class="mi" style="color:rgb(var(--danger))">${svg('trash',20)}</span>Cancella tutti i dati</div></div><p style="text-align:center;font-size:11px;color:rgb(var(--faint));margin-top:16px">Cibo · dati salvati sul tuo dispositivo</p>`)}
+
+function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const el=document.createElement('div');el.className='toast';el.innerHTML=`<span class="dot">${svg('check',16)}</span>${esc(msg)}`;document.body.appendChild(el);setTimeout(()=>el.remove(),2400)}
+
+/* ---------- theme ---------- */
+function themePref(){const t=S.settings.theme;if(t==='system')return window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';return t}
+function applyTheme(){const t=S.settings.theme;document.documentElement.setAttribute('data-theme',t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t);document.documentElement.classList.toggle('darkmode',themePref()==='dark')}
+
+/* ---------- actions ---------- */
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-action]');if(!el)return;const a=el.dataset.action,id=el.dataset.id;
+  const it=id?S.pantry.find(p=>p.id===id):null;
+  switch(a){
+    case'nav':S.ui.tab=el.dataset.tab;persist();closeSheet();render();break;
+    case'more':moreSheet();break;
+    case'theme':{const order=['system','light','dark'];S.settings.theme=order[(order.indexOf(S.settings.theme)+1)%3];persist();applyTheme();render();toast('Tema: '+({system:'automatico',light:'chiaro',dark:'scuro'}[S.settings.theme]));break}
+    case'additem':itemForm(null);break;
+    case'edititem':itemForm(it);break;
+    case'saveitem':{const d=modroot._get();if(!d.name.trim()){toast('Inserisci un nome');return}if(id){Object.assign(S.pantry.find(p=>p.id===id),{name:d.name.trim(),category:d.category,location:d.location,quantity:d.quantity,unit:d.unit,price:d.price,expiryDate:d.expiryDate,updatedAt:new Date().toISOString()});persist();toast('Aggiornato')}else{addPantry(d);toast('Aggiunto alla dispensa')}closeSheet();render();break}
+    case'inc':it.quantity=+(it.quantity+((it.unit==='g'||it.unit==='ml')?50:1)).toFixed(2);it.initialQuantity=Math.max(it.initialQuantity,it.quantity);persist();render();break;
+    case'dec':consume(it.id,(it.unit==='g'||it.unit==='ml')?50:1);render();break;
+    case'wasteitem':if(it.quantity>0){wasteItem(it,it.quantity,expStatus(it.expiryDate)==='expired'?'expired':'spoiled');toast(it.name+' segnato come sprecato')}render();break;
+    case'pexp':S.ui.pantryExp=el.dataset.v;persist();render();break;
+    case'pcat':S.ui.pantryCat=el.dataset.v;persist();render();break;
+    case'floc':S.ui.fridgeLoc=el.dataset.v;persist();render();break;
+    case'recipe':recipeSheet(S.recipes.find(r=>r.id===id));break;
+    case'genrecipe':genSheet();break;
+    case'dogen':{const g=modroot._gen();if(!g.ings.length){toast('Inserisci ingredienti');return}const r=genRecipe(g.ings,g);S.recipes.unshift(r);persist();closeSheet();toast('Ricetta generata!');recipeSheet(r);break}
+    case'fav':{const r=S.recipes.find(x=>x.id===id);r.favorite=!r.favorite;persist();recipeSheet(r);break}
+    case'delrecipe':S.recipes=S.recipes.filter(r=>r.id!==id);persist();closeSheet();render();toast('Ricetta eliminata');break;
+    case'missshop':{const r=S.recipes.find(x=>x.id===id);missingIng(r).forEach(m=>S.shopping.push({id:uid('shp'),name:m.name,category:guessCat(m.name),quantity:m.quantity,unit:m.unit,checked:false,auto:true,reason:'Ricetta: '+r.title,createdAt:new Date().toISOString()}));persist();toast('Ingredienti aggiunti alla spesa');break}
+    case'cooknow':{const r=S.recipes.find(x=>x.id===id);const m={id:uid('mea'),date:todayKey(),meal:'dinner',recipeId:r.id,title:r.title,servings:r.servings,nutrition:{kcal:r.nutrition.kcal*r.servings,protein:r.nutrition.protein*r.servings,carbs:r.nutrition.carbs*r.servings,fat:r.nutrition.fat*r.servings}};S.meals.push(m);const res=cookMeal(m);closeSheet();render();toast(res.missing.length?'Cucinato! Mancavano: '+res.missing.join(', '):'Cucinato! Dispensa aggiornata');break}
+    case'planrecipe':{const r=S.recipes.find(x=>x.id===id);S.meals.push({id:uid('mea'),date:todayKey(),meal:'dinner',recipeId:r.id,title:r.title,servings:r.servings,nutrition:{kcal:r.nutrition.kcal*r.servings,protein:r.nutrition.protein*r.servings,carbs:r.nutrition.carbs*r.servings,fat:r.nutrition.fat*r.servings}});persist();closeSheet();S.ui.tab='planner';render();toast('Aggiunto al planner di oggi');break}
+    case'regenshop':{const n=regenShopping();render();toast(n?n+' suggerimenti aggiunti':'Lista già aggiornata');break}
+    case'addshopbtn':{const inp=document.getElementById('shopinput');addShopManual(inp.value,inp);break}
+    case'togshop':{const s=S.shopping.find(x=>x.id===id);s.checked=!s.checked;persist();render();break}
+    case'delshop':S.shopping=S.shopping.filter(x=>x.id!==id);persist();render();break;
+    case'clearchecked':S.shopping=S.shopping.filter(x=>!x.checked);persist();render();break;
+    case'completeshop':{const ch=S.shopping.filter(x=>x.checked);ch.forEach(s=>addPantry({name:s.name,category:s.category,location:'pantry',quantity:s.quantity,unit:s.unit,price:s.estPrice}));S.shopping=S.shopping.filter(x=>!x.checked);persist();render();toast(ch.length+' prodotti in dispensa');break}
+    case'week':{const v=+el.dataset.v;S.ui.weekOff=v===0?0:S.ui.weekOff+v;persist();render();break}
+    case'selday':S.ui.selDay=el.dataset.v;persist();render();break;
+    case'addmeal':mealPicker(el.dataset.date,el.dataset.meal);break;
+    case'pickmeal':{const r=S.recipes.find(x=>x.id===id);S.meals.push({id:uid('mea'),date:el.dataset.date,meal:el.dataset.meal,recipeId:r.id,title:r.title,servings:r.servings,nutrition:{kcal:r.nutrition.kcal*r.servings,protein:r.nutrition.protein*r.servings,carbs:r.nutrition.carbs*r.servings,fat:r.nutrition.fat*r.servings}});persist();closeSheet();render();toast('Pasto pianificato');break}
+    case'addcustommeal':{const v=document.getElementById('custommeal').value.trim();if(!v)return;S.meals.push({id:uid('mea'),date:el.dataset.date,meal:el.dataset.meal,title:v,servings:1});persist();closeSheet();render();break}
+    case'meal':{const m=S.meals.find(x=>x.id===id);mealActions(m);break}
+    case'cookmeal':{const m=S.meals.find(x=>x.id===id);const res=cookMeal(m);closeSheet();render();toast(res.missing.length?'Cucinato. Mancavano: '+res.missing.join(', '):'Cucinato! Dispensa aggiornata');break}
+    case'delmeal':S.meals=S.meals.filter(x=>x.id!==id);persist();closeSheet();render();break;
+    case'dsex':S.profile.sex=el.dataset.v;persist();render();break;
+    case'dgoal':S.profile.goal=el.dataset.v;persist();render();break;
+    case'dact':S.profile.activity=el.dataset.v;persist();render();break;
+    case'ddiet':S.profile.diet=el.dataset.v;persist();render();break;
+    case'genplan':{const pool=S.recipes;if(!pool.length){toast('Aggiungi ricette prima');break}let n=0;weekDays(0).forEach(d=>{['lunch','dinner'].forEach(meal=>{const r=pool[Math.floor(Math.random()*pool.length)];S.meals.push({id:uid('mea'),date:d,meal,recipeId:r.id,title:r.title,servings:r.servings,nutrition:{kcal:r.nutrition.kcal*r.servings,protein:r.nutrition.protein*r.servings,carbs:r.nutrition.carbs*r.servings,fat:r.nutrition.fat*r.servings}});n++})});persist();S.ui.tab='planner';render();toast(n+' pasti pianificati');break}
+    case'asksugg':ask(el.dataset.q);break;
+    case'askbtn':{const inp=document.getElementById('askinput');ask(inp.value);break}
+    case'resetdata':if(confirm('Cancellare tutti i dati?')){S=seed();persist();closeSheet();applyTheme();render();toast('Dati ripristinati')}break;
+  }
+});
+function mealActions(m){openSheet(`<h3>${esc(m.title)}</h3><p class="sub">${MEALS[m.meal]} · ${m.servings} porz.</p>${m.nutrition?`<div class="card" style="margin-top:12px;padding:12px;background:rgb(var(--surface2))"><div class="grid g4" style="text-align:center">${[['kcal',m.nutrition.kcal],['P',m.nutrition.protein],['C',m.nutrition.carbs],['G',m.nutrition.fat]].map(([l,v])=>`<div><div style="font-weight:800" class="tnum">${Math.round(v)}</div><div style="font-size:10px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`:''}${m.cooked?'<p style="font-size:12px;color:rgb(var(--success));margin-top:12px">✓ Già cucinato, ingredienti scalati dalla dispensa.</p>':''}<div class="row" style="gap:8px;margin-top:16px"><button class="btn dng" data-action="delmeal" data-id="${m.id}">${svg('trash',16)}</button>${m.cooked?'':`<button class="btn pri block" data-action="cookmeal" data-id="${m.id}">${svg('check',16)} Segna cucinato</button>`}</div>`)}
+function dset(k,v){S.profile[k]=v;persist();render()}
+window.onSearch=onSearch;window.addShopManual=addShopManual;window.ask=ask;window.dset=dset;
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.settings.theme==='system'){applyTheme();render()}});
+applyTheme();render();
+</script>
