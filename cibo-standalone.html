@@ -268,6 +268,37 @@ const MEALLIB=[
   {t:'dinner',title:'Curry di ceci e verdure con riso',kcal:430,p:18,c:62,f:12,veg:true,vegan:true,aller:[]},
   {t:'snack',title:'Frutta fresca di stagione',kcal:120,p:2,c:28,f:1,veg:true,vegan:true,aller:[]},
 ];
+/* Ingredients (per 1 serving) + steps for each library meal, keyed by title. */
+const G=(n,q,u)=>({n,q,u});
+const MEAL_RECIPES={
+  'Yogurt greco, avena e frutti di bosco':{min:5,ing:[G('Yogurt greco',170,'g'),G('Fiocchi d\'avena',40,'g'),G('Frutti di bosco',80,'g'),G('Miele',10,'g')],steps:['Versa lo yogurt in una ciotola.','Aggiungi avena e frutti di bosco.','Completa con un filo di miele.']},
+  'Porridge d\'avena con banana e mandorle':{min:8,ing:[G('Fiocchi d\'avena',50,'g'),G('Latte vegetale',200,'ml'),G('Banana',1,'pcs'),G('Mandorle',15,'g')],steps:['Scalda avena e latte 3-4 minuti mescolando.','Unisci la banana a fette.','Completa con le mandorle.']},
+  'Uova strapazzate e pane integrale':{min:10,ing:[G('Uova',2,'pcs'),G('Pane integrale',60,'g'),G('Olio evo',5,'ml')],steps:['Sbatti le uova con un pizzico di sale.','Cuoci in padella mescolando.','Servi con pane tostato.']},
+  'Ricotta, pane integrale e miele':{min:5,ing:[G('Ricotta',100,'g'),G('Pane integrale',60,'g'),G('Miele',10,'g')],steps:['Spalma la ricotta sul pane.','Completa con il miele.']},
+  'Pancake d\'avena e albumi':{min:12,ing:[G('Fiocchi d\'avena',40,'g'),G('Albumi',120,'g'),G('Banana',0.5,'pcs')],steps:['Frulla tutti gli ingredienti.','Cuoci piccoli pancake in padella antiaderente.']},
+  'Overnight oats con latte di soia e frutta':{min:5,ing:[G('Fiocchi d\'avena',50,'g'),G('Latte di soia',150,'ml'),G('Frutta',80,'g'),G('Semi di chia',10,'g')],steps:['Mescola avena, latte e chia.','Lascia in frigo tutta la notte.','Completa con frutta fresca.']},
+  'Macedonia di frutta con semi di chia':{min:8,ing:[G('Frutta mista',250,'g'),G('Semi di chia',15,'g'),G('Succo di limone',10,'ml')],steps:['Taglia la frutta a pezzetti.','Aggiungi chia e limone.','Mescola e servi.']},
+  'Smoothie di frutta, spinaci e semi':{min:5,ing:[G('Banana',1,'pcs'),G('Spinaci',40,'g'),G('Frutta',100,'g'),G('Acqua',150,'ml'),G('Semi misti',10,'g')],steps:['Frulla tutto fino a consistenza liscia.']},
+  'Insalata di pollo, quinoa e verdure':{min:25,ing:[G('Petto di pollo',120,'g'),G('Quinoa',60,'g'),G('Verdure miste',150,'g'),G('Olio evo',10,'ml')],steps:['Cuoci la quinoa e falla raffreddare.','Griglia il pollo a strisce.','Unisci con le verdure e condisci.']},
+  'Riso integrale, ceci e verdure':{min:25,ing:[G('Riso integrale',70,'g'),G('Ceci lessati',120,'g'),G('Verdure',150,'g'),G('Olio evo',10,'ml')],steps:['Cuoci il riso integrale.','Salta ceci e verdure.','Unisci il tutto e condisci.']},
+  'Wrap integrale con tacchino e insalata':{min:10,ing:[G('Piadina integrale',1,'pcs'),G('Fesa di tacchino',100,'g'),G('Insalata',50,'g'),G('Pomodoro',60,'g')],steps:['Farcisci la piadina con tacchino e verdure.','Arrotola e taglia a metà.']},
+  'Farro con tonno, pomodorini e olive':{min:20,ing:[G('Farro',70,'g'),G('Tonno al naturale',80,'g'),G('Pomodorini',100,'g'),G('Olive',20,'g')],steps:['Cuoci il farro e raffreddalo.','Unisci tonno, pomodorini e olive.','Condisci con olio.']},
+  'Bowl di lenticchie e verdure arrosto':{min:30,ing:[G('Lenticchie lessate',150,'g'),G('Verdure miste',200,'g'),G('Olio evo',10,'ml')],steps:['Arrostisci le verdure in forno.','Scalda le lenticchie.','Componi la bowl e condisci.']},
+  'Insalatona di ceci, feta e cetrioli':{min:12,ing:[G('Ceci lessati',120,'g'),G('Feta',50,'g'),G('Cetrioli',100,'g'),G('Pomodori',100,'g')],steps:['Taglia le verdure.','Unisci ceci e feta.','Condisci con olio e origano.']},
+  'Salmone al forno con verdure':{min:25,ing:[G('Salmone',150,'g'),G('Zucchine',150,'g'),G('Olio evo',10,'ml')],steps:['Preriscalda il forno a 200°C.','Cuoci salmone e verdure 18-20 minuti.']},
+  'Petto di pollo grigliato e insalata':{min:18,ing:[G('Petto di pollo',150,'g'),G('Insalata mista',150,'g'),G('Olio evo',8,'ml')],steps:['Griglia il pollo 6 minuti per lato.','Servi con insalata condita.']},
+  'Frittata di verdure e insalata':{min:15,ing:[G('Uova',3,'pcs'),G('Verdure',150,'g'),G('Insalata',80,'g')],steps:['Salta le verdure in padella.','Aggiungi le uova sbattute e cuoci.','Servi con insalata.']},
+  'Zuppa di legumi e pane integrale':{min:30,ing:[G('Legumi misti',200,'g'),G('Verdure',150,'g'),G('Pane integrale',40,'g')],steps:['Soffriggi le verdure.','Aggiungi legumi e acqua, cuoci 20 minuti.','Servi con pane.']},
+  'Merluzzo al vapore con patate e broccoli':{min:25,ing:[G('Merluzzo',180,'g'),G('Patate',150,'g'),G('Broccoli',150,'g')],steps:['Cuoci a vapore patate e broccoli.','Aggiungi il merluzzo per 8 minuti.','Condisci con olio e limone.']},
+  'Tofu saltato con verdure e riso':{min:20,ing:[G('Tofu',150,'g'),G('Verdure',150,'g'),G('Riso',60,'g'),G('Salsa di soia',15,'ml')],steps:['Cuoci il riso.','Salta tofu e verdure con salsa di soia.','Servi sul riso.']},
+  'Curry di ceci e verdure con riso':{min:25,ing:[G('Ceci lessati',150,'g'),G('Verdure',150,'g'),G('Latte di cocco',100,'ml'),G('Riso',60,'g')],steps:['Soffriggi le spezie del curry.','Aggiungi ceci, verdure e cocco, cuoci 15 minuti.','Servi con riso.']},
+  'Frutta fresca e mandorle':{min:3,ing:[G('Frutta',150,'g'),G('Mandorle',20,'g')],steps:['Servi la frutta con le mandorle.']},
+  'Yogurt greco':{min:2,ing:[G('Yogurt greco',170,'g')],steps:['Servi freddo, con un pizzico di cannella se gradito.']},
+  'Hummus con carote':{min:5,ing:[G('Hummus',60,'g'),G('Carote',150,'g')],steps:['Taglia le carote a bastoncini.','Servi con l\'hummus.']},
+  'Ricotta e noci':{min:3,ing:[G('Ricotta',100,'g'),G('Noci',20,'g'),G('Miele',5,'g')],steps:['Unisci ricotta e noci.','Completa con un filo di miele.']},
+  'Gallette di riso e burro d\'arachidi':{min:3,ing:[G('Gallette di riso',2,'pcs'),G('Burro d\'arachidi',20,'g')],steps:['Spalma il burro d\'arachidi sulle gallette.']},
+  'Frutta fresca di stagione':{min:2,ing:[G('Frutta di stagione',200,'g')],steps:['Lava e servi la frutta.']},
+};
 
 /* ---------- utils ---------- */
 const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -315,7 +346,7 @@ function seed(){
     R('Salmone al forno','Filetto di salmone ricco di omega-3.',[{name:'Salmone',quantity:300,unit:'g'},{name:'Zucchine',quantity:1,unit:'pcs'},{name:'Olio extravergine',quantity:10,unit:'ml'}],['Forno a 200°C.','Disponi salmone e zucchine, condisci con olio e sale.','Cuoci 18-20 min.'],25,2,{kcal:380,protein:34,carbs:6,fat:24},['pesce','omega3']),
   ];
   return {pantry,shopping:[],recipes,meals:[],waste:[],consumption:[],
-    profile:{name:'Tu',sex:'female',age:30,heightCm:170,weightKg:68,goal:'maintain',activity:'moderate',allergies:[],preferences:[],diet:'none'},
+    profile:{name:'Tu',sex:'female',age:30,heightCm:170,weightKg:68,goal:'lose',pace:'moderate',activity:'moderate',allergies:[],preferences:[],diet:'none'},
     settings:{theme:'system',currency:'€'},ui:{tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',weekOff:0,selDay:todayKey()}};
 }
 
@@ -327,10 +358,18 @@ let focusId=null;
 
 /* ---------- nutrition ---------- */
 const ACT={sedentary:1.2,light:1.375,moderate:1.55,active:1.725,athlete:1.9};
-const GK={lose:-450,maintain:0,gain:350,muscle:250};const GP={lose:2,maintain:1.6,gain:1.8,muscle:2.2};
+const GP={lose:2,maintain:1.6,gain:1.8,muscle:2.2};
+// Calorie adjustment by goal AND pace (how aggressive).
+const PACE_ADJ={light:{lose:-300,gain:200,muscle:150},moderate:{lose:-500,gain:350,muscle:250},intense:{lose:-750,gain:500,muscle:400}};
+const PACE_LABEL={light:'Lieve',moderate:'Moderato',intense:'Intenso'};
 function targets(p){const bmr=10*p.weightKg+6.25*p.heightCm-5*p.age+(p.sex==='male'?5:-161);
-  const tdee=bmr*ACT[p.activity];const kcal=Math.round(tdee+GK[p.goal]);const protein=Math.round(p.weightKg*GP[p.goal]);
-  const fat=Math.round(kcal*.27/9);const carbs=Math.round((kcal-kcal*.27-protein*4)/4);return{kcal,protein,carbs,fat}}
+  const tdee=bmr*ACT[p.activity];const pace=p.pace||'moderate';
+  const adj=p.goal==='maintain'?0:(PACE_ADJ[pace][p.goal]||0);
+  let kcal=Math.round(tdee+adj);
+  const floor=p.sex==='male'?1500:1200;const floored=kcal<floor;if(floored)kcal=floor;
+  const protein=Math.round(p.weightKg*GP[p.goal]);
+  const fat=Math.round(kcal*.27/9);const carbs=Math.max(0,Math.round((kcal-kcal*.27-protein*4)/4));
+  return{kcal,protein,carbs,fat,tdee:Math.round(tdee),adj,floored,floor}}
 function itemNut(it,qty){if(!it.nutrition)return null;const g=approxKg(qty,it.unit,it.unitWeightG)*1000;const f=g/100;
   return{kcal:Math.round(it.nutrition.kcal*f),protein:+(it.nutrition.protein*f).toFixed(1),carbs:+(it.nutrition.carbs*f).toFixed(1),fat:+(it.nutrition.fat*f).toFixed(1)}}
 function matchScore(r){const names=S.pantry.filter(p=>p.quantity>0).map(p=>p.name.toLowerCase());let h=0;
@@ -389,6 +428,20 @@ function genRecipe(ings,c){const main=ings.slice(0,3);const has=re=>ings.some(i=
     minutes,difficulty:'easy',servings:c.servings||2,nutrition:{kcal,protein:prot?34:16,carbs:carb?55:24,fat:18},
     tags:[c.diet&&c.diet!=='none'?c.diet:'svuota-frigo',minutes<=20?'veloce':'facile'],source:'ai',createdAt:new Date().toISOString()}}
 
+/* Ensure a saved recipe exists for a library meal, so planned meals are openable. */
+function planRecipe(cand){
+  if(cand.recipeId)return cand.recipeId;
+  const ex=S.recipes.find(r=>r.title===cand.title&&r.source==='plan');
+  if(ex)return ex.id;
+  const det=MEAL_RECIPES[cand.title]||{min:15,ing:[],steps:['Prepara gli ingredienti e componi il piatto.']};
+  const r={id:uid('rec'),title:cand.title,description:'Piatto del piano salutare, bilanciato per il tuo obiettivo.',
+    ingredients:(det.ing||[]).map(i=>({name:i.n,quantity:i.q,unit:i.u})),steps:det.steps,minutes:det.min||15,difficulty:'easy',servings:1,
+    nutrition:{kcal:cand.kcal,protein:cand.p,carbs:cand.c,fat:cand.f},
+    tags:[cand.vegan?'vegano':cand.veg?'vegetariano':'',{breakfast:'colazione',lunch:'pranzo',dinner:'cena',snack:'spuntino'}[cand.t]].filter(Boolean),
+    source:'plan',createdAt:new Date().toISOString()};
+  S.recipes.push(r);return r.id;
+}
+
 /* Build a healthy 7-day plan that hits the daily calorie target for the user's goal,
    split across balanced meals and respecting allergies + diet. */
 function generateHealthyWeek(){
@@ -418,7 +471,7 @@ function generateHealthyWeek(){
       const serv=clamp(budget/cand.kcal,.5,2.5);
       const nut={kcal:Math.round(cand.kcal*serv),protein:Math.round(cand.p*serv),carbs:Math.round(cand.c*serv),fat:Math.round(cand.f*serv)};
       const hint=serv<.85?' · porzione piccola':serv>1.6?' · porzione doppia':serv>1.25?' · porzione abbondante':'';
-      S.meals.push({id:uid('mea'),date,meal,recipeId:cand.recipeId,title:cand.title+hint,servings:+serv.toFixed(2),nutrition:nut});
+      S.meals.push({id:uid('mea'),date,meal,recipeId:cand.recipeId||planRecipe(cand),title:cand.title+hint,servings:+serv.toFixed(2),nutrition:nut});
     });
   });
   S.ui.selDay=days.includes(todayKey())?todayKey():days[0];
@@ -556,8 +609,11 @@ function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=da
 
 /* ---------- DIET ---------- */
 function vDiet(){const p=S.profile;const t=targets(p);
-  const gk=GK[p.goal];const goalTxt={lose:'Dimagrimento',maintain:'Mantenimento',gain:'Aumento peso',muscle:'Massa muscolare'}[p.goal];
-  const goalLine=`Obiettivo: <b style="color:rgb(var(--fg))">${goalTxt}</b> · ${gk<0?'deficit di ~'+Math.abs(gk)+' kcal/g':gk>0?'surplus di ~'+gk+' kcal/g':'calorie di mantenimento'}. Il piano distribuisce <b style="color:rgb(var(--fg))">${t.kcal} kcal/g</b> su 4 pasti bilanciati.`;
+  const goalTxt={lose:'Dimagrimento',maintain:'Mantenimento',gain:'Aumento peso',muscle:'Massa muscolare'}[p.goal];
+  const adjTxt=t.adj<0?'deficit di ~'+Math.abs(t.adj)+' kcal/g':t.adj>0?'surplus di ~'+t.adj+' kcal/g':'calorie di mantenimento';
+  const goalLine=`Obiettivo: <b style="color:rgb(var(--fg))">${goalTxt}</b> · ${adjTxt}. Fabbisogno di mantenimento ~${t.tdee} kcal/g → il piano distribuisce <b style="color:rgb(var(--fg))">${t.kcal} kcal/g</b> su 4 pasti bilanciati.${t.floored?' <b style="color:rgb(var(--warning))">Limite di sicurezza: non scendo sotto '+t.floor+' kcal.</b>':''}`;
+  const PACES=[['light','Lieve'],['moderate','Moderato'],['intense','Intenso']];
+  const pace=p.pace||'moderate';
   const macros=[['Proteine',t.protein,'--info',t.protein*4],['Carboidrati',t.carbs,'--warning',t.carbs*4],['Grassi',t.fat,'--danger',t.fat*9]];
   const GOALS=[['lose','Dimagrire','📉'],['maintain','Mantenere','⚖️'],['gain','Aumentare','📈'],['muscle','Massa','💪']];
   const ACTS=[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']];
@@ -570,6 +626,7 @@ function vDiet(){const p=S.profile;const t=targets(p);
     <div class="chips" style="margin-bottom:14px">${[['female','Donna'],['male','Uomo']].map(([k,l])=>`<button class="chip ${p.sex===k?'on':''}" data-action="dsex" data-v="${k}">${l}</button>`).join('')}</div>
     <div class="grid g3">${[['age','Età','anni'],['heightCm','Altezza','cm'],['weightKg','Peso','kg']].map(([k,l,u])=>`<div><label class="lab">${l}</label><input class="input" type="number" value="${p[k]}" onchange="dset('${k}',+this.value)" style="padding:10px"></div>`).join('')}</div>
     <div class="fgroup"><label class="lab">Obiettivo</label><div class="loc3" style="grid-template-columns:1fr 1fr 1fr 1fr">${GOALS.map(([k,l,e])=>`<button class="loctile ${p.goal===k?'on':''}" data-action="dgoal" data-v="${k}"><span class="em">${e}</span>${l}</button>`).join('')}</div></div>
+    ${p.goal!=='maintain'?`<div class="fgroup"><label class="lab">${p.goal==='lose'?'Ritmo di dimagrimento':'Ritmo di crescita'}</label><div class="catgrid">${PACES.map(([k,l])=>`<button class="chip ${pace===k?'on':''}" data-action="dpace" data-v="${k}">${l} (${(PACE_ADJ[k][p.goal]>0?'+':'')}${PACE_ADJ[k][p.goal]})</button>`).join('')}</div></div>`:''}
     <div class="fgroup"><label class="lab">Attività</label><div class="catgrid">${ACTS.map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-action="dact" data-v="${k}">${l}</button>`).join('')}</div></div>
     <div class="fgroup"><label class="lab">Regime</label><div class="catgrid">${DIETS.map(([k,l])=>`<button class="chip ${p.diet===k?'on':''}" data-action="ddiet" data-v="${k}">${l}</button>`).join('')}</div></div>
   </div>
@@ -695,6 +752,7 @@ document.addEventListener('click',e=>{
     case'pcat':S.ui.pantryCat=el.dataset.v;persist();render();break;
     case'floc':S.ui.fridgeLoc=el.dataset.v;persist();render();break;
     case'recipe':recipeSheet(S.recipes.find(r=>r.id===id));break;
+    case'viewrecipe':{const r=S.recipes.find(x=>x.id===id);if(r)recipeSheet(r);break}
     case'genrecipe':genSheet();break;
     case'dogen':{const g=modroot._gen();if(!g.ings.length){toast('Inserisci ingredienti');return}const r=genRecipe(g.ings,g);S.recipes.unshift(r);persist();closeSheet();toast('Ricetta generata!');recipeSheet(r);break}
     case'fav':{const r=S.recipes.find(x=>x.id===id);r.favorite=!r.favorite;persist();recipeSheet(r);break}
@@ -720,13 +778,14 @@ document.addEventListener('click',e=>{
     case'dgoal':S.profile.goal=el.dataset.v;persist();render();break;
     case'dact':S.profile.activity=el.dataset.v;persist();render();break;
     case'ddiet':S.profile.diet=el.dataset.v;persist();render();break;
+    case'dpace':S.profile.pace=el.dataset.v;persist();render();break;
     case'genplan':{const res=generateHealthyWeek();persist();S.ui.tab='planner';render();toast('Piano salutare creato · ~'+res.kcal+' kcal/g');break}
     case'asksugg':ask(el.dataset.q);break;
     case'askbtn':{const inp=document.getElementById('askinput');ask(inp.value);break}
     case'resetdata':if(confirm('Cancellare tutti i dati?')){S=seed();persist();closeSheet();applyTheme();render();toast('Dati ripristinati')}break;
   }
 });
-function mealActions(m){openSheet(`<h3>${esc(m.title)}</h3><p class="sub">${MEALS[m.meal]} · ${m.servings} porz.</p>${m.nutrition?`<div class="card" style="margin-top:12px;padding:12px;background:rgb(var(--surface2))"><div class="grid g4" style="text-align:center">${[['kcal',m.nutrition.kcal],['P',m.nutrition.protein],['C',m.nutrition.carbs],['G',m.nutrition.fat]].map(([l,v])=>`<div><div style="font-weight:800" class="tnum">${Math.round(v)}</div><div style="font-size:10px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`:''}${m.cooked?'<p style="font-size:12px;color:rgb(var(--success));margin-top:12px">✓ Già cucinato, ingredienti scalati dalla dispensa.</p>':''}<div class="row" style="gap:8px;margin-top:16px"><button class="btn dng" data-action="delmeal" data-id="${m.id}">${svg('trash',16)}</button>${m.cooked?'':`<button class="btn pri block" data-action="cookmeal" data-id="${m.id}">${svg('check',16)} Segna cucinato</button>`}</div>`)}
+function mealActions(m){openSheet(`<h3>${esc(m.title)}</h3><p class="sub">${MEALS[m.meal]} · ${m.servings} porz.</p>${m.nutrition?`<div class="card" style="margin-top:12px;padding:12px;background:rgb(var(--surface2))"><div class="grid g4" style="text-align:center">${[['kcal',m.nutrition.kcal],['P',m.nutrition.protein],['C',m.nutrition.carbs],['G',m.nutrition.fat]].map(([l,v])=>`<div><div style="font-weight:800" class="tnum">${Math.round(v)}</div><div style="font-size:10px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`:''}${m.cooked?'<p style="font-size:12px;color:rgb(var(--success));margin-top:12px">✓ Già cucinato, ingredienti scalati dalla dispensa.</p>':''}${m.recipeId&&S.recipes.find(r=>r.id===m.recipeId)?`<button class="btn sec block" style="margin-top:12px" data-action="viewrecipe" data-id="${m.recipeId}">${svg('chef',16)} Vedi ricetta e ingredienti</button>`:''}<div class="row" style="gap:8px;margin-top:10px"><button class="btn dng" data-action="delmeal" data-id="${m.id}">${svg('trash',16)}</button>${m.cooked?'':`<button class="btn pri block" data-action="cookmeal" data-id="${m.id}">${svg('check',16)} Segna cucinato</button>`}</div>`)}
 function dset(k,v){S.profile[k]=v;persist();render()}
 window.onSearch=onSearch;window.addShopManual=addShopManual;window.ask=ask;window.dset=dset;
 

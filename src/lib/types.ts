@@ -99,7 +99,7 @@ export interface Recipe {
   nutrition: Nutrition; // per serving
   tags: string[];
   imageUrl?: string;
-  source: "ai" | "user" | "seed";
+  source: "ai" | "user" | "seed" | "plan";
   favorite?: boolean;
   createdAt: string;
 }
@@ -160,6 +160,7 @@ export interface DietProfile {
   heightCm: number;
   weightKg: number;
   goal: Goal;
+  pace?: "light" | "moderate" | "intense"; // how aggressive the deficit/surplus is
   activity: Activity;
   allergies: string[];
   preferences: string[]; // liked foods / cuisines

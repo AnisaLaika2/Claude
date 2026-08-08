@@ -1,4 +1,4 @@
-import type { DietProfile, MealType, Nutrition, PlannedMeal, Recipe } from "./types";
+import type { DietProfile, MealType, Nutrition, PlannedMeal, Recipe, RecipeIngredient, Unit } from "./types";
 import { computeTargets } from "./nutrition";
 
 // Per-serving nutrition for a small library of balanced meals.
@@ -149,4 +149,56 @@ export function buildHealthyWeek(
   });
 
   return meals;
+}
+
+// Ingredients (per 1 serving) + steps for each library meal.
+const g = (name: string, quantity: number, unit: Unit): RecipeIngredient => ({ name, quantity, unit });
+const MEAL_DETAILS: Record<string, { minutes: number; ingredients: RecipeIngredient[]; steps: string[] }> = {
+  "Yogurt greco, avena e frutti di bosco": { minutes: 5, ingredients: [g("Yogurt greco", 170, "g"), g("Fiocchi d'avena", 40, "g"), g("Frutti di bosco", 80, "g"), g("Miele", 10, "g")], steps: ["Versa lo yogurt in una ciotola.", "Aggiungi avena e frutti di bosco.", "Completa con un filo di miele."] },
+  "Porridge d'avena con banana e mandorle": { minutes: 8, ingredients: [g("Fiocchi d'avena", 50, "g"), g("Latte vegetale", 200, "ml"), g("Banana", 1, "pcs"), g("Mandorle", 15, "g")], steps: ["Scalda avena e latte 3-4 minuti mescolando.", "Unisci la banana a fette.", "Completa con le mandorle."] },
+  "Uova strapazzate e pane integrale": { minutes: 10, ingredients: [g("Uova", 2, "pcs"), g("Pane integrale", 60, "g"), g("Olio evo", 5, "ml")], steps: ["Sbatti le uova con un pizzico di sale.", "Cuoci in padella mescolando.", "Servi con pane tostato."] },
+  "Ricotta, pane integrale e miele": { minutes: 5, ingredients: [g("Ricotta", 100, "g"), g("Pane integrale", 60, "g"), g("Miele", 10, "g")], steps: ["Spalma la ricotta sul pane.", "Completa con il miele."] },
+  "Pancake d'avena e albumi": { minutes: 12, ingredients: [g("Fiocchi d'avena", 40, "g"), g("Albumi", 120, "g"), g("Banana", 0.5, "pcs")], steps: ["Frulla tutti gli ingredienti.", "Cuoci piccoli pancake in padella antiaderente."] },
+  "Overnight oats con latte di soia e frutta": { minutes: 5, ingredients: [g("Fiocchi d'avena", 50, "g"), g("Latte di soia", 150, "ml"), g("Frutta", 80, "g"), g("Semi di chia", 10, "g")], steps: ["Mescola avena, latte e chia.", "Lascia in frigo tutta la notte.", "Completa con frutta fresca."] },
+  "Macedonia di frutta con semi di chia": { minutes: 8, ingredients: [g("Frutta mista", 250, "g"), g("Semi di chia", 15, "g"), g("Succo di limone", 10, "ml")], steps: ["Taglia la frutta a pezzetti.", "Aggiungi chia e limone.", "Mescola e servi."] },
+  "Smoothie di frutta, spinaci e semi": { minutes: 5, ingredients: [g("Banana", 1, "pcs"), g("Spinaci", 40, "g"), g("Frutta", 100, "g"), g("Acqua", 150, "ml"), g("Semi misti", 10, "g")], steps: ["Frulla tutto fino a consistenza liscia."] },
+  "Insalata di pollo, quinoa e verdure": { minutes: 25, ingredients: [g("Petto di pollo", 120, "g"), g("Quinoa", 60, "g"), g("Verdure miste", 150, "g"), g("Olio evo", 10, "ml")], steps: ["Cuoci la quinoa e falla raffreddare.", "Griglia il pollo a strisce.", "Unisci con le verdure e condisci."] },
+  "Riso integrale, ceci e verdure": { minutes: 25, ingredients: [g("Riso integrale", 70, "g"), g("Ceci lessati", 120, "g"), g("Verdure", 150, "g"), g("Olio evo", 10, "ml")], steps: ["Cuoci il riso integrale.", "Salta ceci e verdure.", "Unisci il tutto e condisci."] },
+  "Wrap integrale con tacchino e insalata": { minutes: 10, ingredients: [g("Piadina integrale", 1, "pcs"), g("Fesa di tacchino", 100, "g"), g("Insalata", 50, "g"), g("Pomodoro", 60, "g")], steps: ["Farcisci la piadina con tacchino e verdure.", "Arrotola e taglia a metà."] },
+  "Farro con tonno, pomodorini e olive": { minutes: 20, ingredients: [g("Farro", 70, "g"), g("Tonno al naturale", 80, "g"), g("Pomodorini", 100, "g"), g("Olive", 20, "g")], steps: ["Cuoci il farro e raffreddalo.", "Unisci tonno, pomodorini e olive.", "Condisci con olio."] },
+  "Bowl di lenticchie e verdure arrosto": { minutes: 30, ingredients: [g("Lenticchie lessate", 150, "g"), g("Verdure miste", 200, "g"), g("Olio evo", 10, "ml")], steps: ["Arrostisci le verdure in forno.", "Scalda le lenticchie.", "Componi la bowl e condisci."] },
+  "Insalatona di ceci, feta e cetrioli": { minutes: 12, ingredients: [g("Ceci lessati", 120, "g"), g("Feta", 50, "g"), g("Cetrioli", 100, "g"), g("Pomodori", 100, "g")], steps: ["Taglia le verdure.", "Unisci ceci e feta.", "Condisci con olio e origano."] },
+  "Salmone al forno con verdure": { minutes: 25, ingredients: [g("Salmone", 150, "g"), g("Zucchine", 150, "g"), g("Olio evo", 10, "ml")], steps: ["Preriscalda il forno a 200°C.", "Cuoci salmone e verdure 18-20 minuti."] },
+  "Petto di pollo grigliato e insalata": { minutes: 18, ingredients: [g("Petto di pollo", 150, "g"), g("Insalata mista", 150, "g"), g("Olio evo", 8, "ml")], steps: ["Griglia il pollo 6 minuti per lato.", "Servi con insalata condita."] },
+  "Frittata di verdure e insalata": { minutes: 15, ingredients: [g("Uova", 3, "pcs"), g("Verdure", 150, "g"), g("Insalata", 80, "g")], steps: ["Salta le verdure in padella.", "Aggiungi le uova sbattute e cuoci.", "Servi con insalata."] },
+  "Zuppa di legumi e pane integrale": { minutes: 30, ingredients: [g("Legumi misti", 200, "g"), g("Verdure", 150, "g"), g("Pane integrale", 40, "g")], steps: ["Soffriggi le verdure.", "Aggiungi legumi e acqua, cuoci 20 minuti.", "Servi con pane."] },
+  "Merluzzo al vapore con patate e broccoli": { minutes: 25, ingredients: [g("Merluzzo", 180, "g"), g("Patate", 150, "g"), g("Broccoli", 150, "g")], steps: ["Cuoci a vapore patate e broccoli.", "Aggiungi il merluzzo per 8 minuti.", "Condisci con olio e limone."] },
+  "Tofu saltato con verdure e riso": { minutes: 20, ingredients: [g("Tofu", 150, "g"), g("Verdure", 150, "g"), g("Riso", 60, "g"), g("Salsa di soia", 15, "ml")], steps: ["Cuoci il riso.", "Salta tofu e verdure con salsa di soia.", "Servi sul riso."] },
+  "Curry di ceci e verdure con riso": { minutes: 25, ingredients: [g("Ceci lessati", 150, "g"), g("Verdure", 150, "g"), g("Latte di cocco", 100, "ml"), g("Riso", 60, "g")], steps: ["Soffriggi le spezie del curry.", "Aggiungi ceci, verdure e cocco, cuoci 15 minuti.", "Servi con riso."] },
+  "Frutta fresca e mandorle": { minutes: 3, ingredients: [g("Frutta", 150, "g"), g("Mandorle", 20, "g")], steps: ["Servi la frutta con le mandorle."] },
+  "Yogurt greco": { minutes: 2, ingredients: [g("Yogurt greco", 170, "g")], steps: ["Servi freddo, con un pizzico di cannella se gradito."] },
+  "Hummus con carote": { minutes: 5, ingredients: [g("Hummus", 60, "g"), g("Carote", 150, "g")], steps: ["Taglia le carote a bastoncini.", "Servi con l'hummus."] },
+  "Ricotta e noci": { minutes: 3, ingredients: [g("Ricotta", 100, "g"), g("Noci", 20, "g"), g("Miele", 5, "g")], steps: ["Unisci ricotta e noci.", "Completa con un filo di miele."] },
+  "Gallette di riso e burro d'arachidi": { minutes: 3, ingredients: [g("Gallette di riso", 2, "pcs"), g("Burro d'arachidi", 20, "g")], steps: ["Spalma il burro d'arachidi sulle gallette."] },
+  "Frutta fresca di stagione": { minutes: 2, ingredients: [g("Frutta di stagione", 200, "g")], steps: ["Lava e servi la frutta."] },
+};
+
+// Build a saveable recipe from a library meal title (used to give planned meals full recipes).
+export function recipeFromTemplate(title: string): Omit<Recipe, "id" | "createdAt"> | null {
+  const tmpl = MEAL_LIBRARY.find((m) => m.title === title);
+  if (!tmpl) return null;
+  const det = MEAL_DETAILS[title] || { minutes: 15, ingredients: [], steps: ["Prepara gli ingredienti e componi il piatto."] };
+  const mealTag = { breakfast: "colazione", lunch: "pranzo", dinner: "cena", snack: "spuntino" }[tmpl.meal];
+  return {
+    title,
+    description: "Piatto del piano salutare, bilanciato per il tuo obiettivo.",
+    ingredients: det.ingredients,
+    steps: det.steps,
+    minutes: det.minutes,
+    difficulty: "easy",
+    servings: 1,
+    nutrition: { kcal: tmpl.kcal, protein: tmpl.protein, carbs: tmpl.carbs, fat: tmpl.fat },
+    tags: [tmpl.vegan ? "vegano" : tmpl.veg ? "vegetariano" : "", mealTag].filter(Boolean) as string[],
+    source: "plan",
+  };
 }

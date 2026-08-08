@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, todayKey } from "@/lib/db";
 import { computeTargets } from "@/lib/nutrition";
-import { addPlannedMeal } from "@/lib/actions";
-import { buildHealthyWeek } from "@/lib/mealplan";
+import { addPlannedMeal, saveRecipe } from "@/lib/actions";
+import { buildHealthyWeek, recipeFromTemplate } from "@/lib/mealplan";
 import { weekDays } from "@/lib/format";
 import { Ring, Segmented } from "@/components/ui";
 import { toast } from "@/components/toast";
@@ -30,9 +30,17 @@ const DIETS = [
   ["pescatarian", "Pescetariana"], ["mediterranean", "Mediterranea"], ["keto", "Keto"],
 ];
 
+type Pace = "light" | "moderate" | "intense";
+const PACES: [Pace, string][] = [["light", "Lieve"], ["moderate", "Moderato"], ["intense", "Intenso"]];
+const PACE_ADJ: Record<Pace, Partial<Record<Goal, number>>> = {
+  light: { lose: -300, gain: 200, muscle: 150 },
+  moderate: { lose: -500, gain: 350, muscle: 250 },
+  intense: { lose: -750, gain: 500, muscle: 400 },
+};
+
 const DEFAULT: DietProfile = {
   name: "Tu", sex: "female", age: 30, heightCm: 170, weightKg: 68,
-  goal: "maintain", activity: "moderate", allergies: [], preferences: [], dislikes: [], diet: "none",
+  goal: "lose", pace: "moderate", activity: "moderate", allergies: [], preferences: [], dislikes: [], diet: "none",
 };
 
 export default function DietPage() {
@@ -70,8 +78,20 @@ export default function DietPage() {
     // Replace any existing meals for this week, then build a balanced plan.
     const existing = await db.meals.where("date").between(days[0], days[6] + "￿").toArray();
     await db.meals.bulkDelete(existing.map((m) => m.id));
-    const plan = buildHealthyWeek({ ...p, ...targets }, recipes, days);
-    for (const m of plan) await addPlannedMeal(m);
+    const plan = buildHealthyWeek(p, recipes, days);
+    for (const m of plan) {
+      // Give library meals a real, openable recipe (ingredients + steps).
+      if (!m.recipeId) {
+        const base = m.title.split(" · ")[0];
+        const existingRec = await db.recipes.filter((r) => r.title === base && r.source === "plan").first();
+        if (existingRec) m.recipeId = existingRec.id;
+        else {
+          const tmpl = recipeFromTemplate(base);
+          if (tmpl) m.recipeId = await saveRecipe(tmpl);
+        }
+      }
+      await addPlannedMeal(m);
+    }
     toast.success(`Piano salutare di ${plan.length} pasti · ${targets.targetKcal} kcal/g`);
   }
 
@@ -104,6 +124,10 @@ export default function DietPage() {
               ))}
             </div>
           </div>
+          <div className="border-t border-border px-5 py-3 text-xs text-muted">
+            Mantenimento ~{targets.tdee} kcal/g · {targets.adj < 0 ? `deficit di ~${Math.abs(targets.adj)} kcal/g` : targets.adj > 0 ? `surplus di ~${targets.adj} kcal/g` : "calorie di mantenimento"}
+            {targets.floored && <span className="font-semibold text-warning"> · limite di sicurezza {targets.floor} kcal</span>}
+          </div>
         </div>
       </div>
 
@@ -135,6 +159,19 @@ export default function DietPage() {
             ))}
           </div>
         </div>
+
+        {p.goal !== "maintain" && (
+          <div>
+            <label className="label">{p.goal === "lose" ? "Ritmo di dimagrimento" : "Ritmo di crescita"}</label>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {PACES.map(([k, label]) => (
+                <button key={k} onClick={() => set({ pace: k })} className={`chip ${(p.pace || "moderate") === k ? "chip-active" : ""}`}>
+                  {label} ({PACE_ADJ[k][p.goal]! > 0 ? "+" : ""}{PACE_ADJ[k][p.goal]})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="label">Attività fisica</label>

@@ -14,11 +14,11 @@ const ACTIVITY_FACTOR: Record<Activity, number> = {
   athlete: 1.9,
 };
 
-const GOAL_KCAL: Record<Goal, number> = {
-  lose: -450,
-  maintain: 0,
-  gain: 350,
-  muscle: 250,
+// Calorie adjustment by goal AND pace (how aggressive).
+const PACE_ADJ: Record<"light" | "moderate" | "intense", Partial<Record<Goal, number>>> = {
+  light: { lose: -300, gain: 200, muscle: 150 },
+  moderate: { lose: -500, gain: 350, muscle: 250 },
+  intense: { lose: -750, gain: 500, muscle: 400 },
 };
 
 // Protein g/kg by goal
@@ -29,19 +29,33 @@ const GOAL_PROTEIN: Record<Goal, number> = {
   muscle: 2.2,
 };
 
-export function computeTargets(p: DietProfile): Required<
-  Pick<DietProfile, "targetKcal" | "targetProtein" | "targetCarbs" | "targetFat">
-> {
+export interface DietTargets {
+  targetKcal: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  tdee: number;
+  adj: number;
+  floored: boolean;
+  floor: number;
+}
+
+export function computeTargets(p: DietProfile): DietTargets {
   const tdee = bmr(p.sex, p.weightKg, p.heightCm, p.age) * ACTIVITY_FACTOR[p.activity];
-  const targetKcal = Math.round(tdee + GOAL_KCAL[p.goal]);
+  const pace = p.pace || "moderate";
+  const adj = p.goal === "maintain" ? 0 : PACE_ADJ[pace][p.goal] ?? 0;
+  // Safety floor: never prescribe below a clinically sensible minimum.
+  const floor = p.sex === "male" ? 1500 : 1200;
+  let targetKcal = Math.round(tdee + adj);
+  const floored = targetKcal < floor;
+  if (floored) targetKcal = floor;
+
   const targetProtein = Math.round(p.weightKg * GOAL_PROTEIN[p.goal]);
-  // Fat ~ 27% of kcal, remainder carbs
   const fatKcal = targetKcal * 0.27;
   const targetFat = Math.round(fatKcal / 9);
-  const proteinKcal = targetProtein * 4;
-  const carbsKcal = Math.max(targetKcal - fatKcal - proteinKcal, 0);
+  const carbsKcal = Math.max(targetKcal - fatKcal - targetProtein * 4, 0);
   const targetCarbs = Math.round(carbsKcal / 4);
-  return { targetKcal, targetProtein, targetCarbs, targetFat };
+  return { targetKcal, targetProtein, targetCarbs, targetFat, tdee: Math.round(tdee), adj, floored, floor };
 }
 
 export const emptyNutrition = (): Nutrition => ({
