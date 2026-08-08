@@ -1,0 +1,187 @@
+// Livello di persistenza locale basato su IndexedDB (libreria idb).
+// Tutti i dati restano sul dispositivo dell'utente: nessuna chiamata di rete.
+
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type {
+  Category,
+  ImportProfile,
+  Recurring,
+  Rule,
+  Transaction,
+} from '../types';
+import { uid } from '../lib/format';
+
+interface SpeseDB extends DBSchema {
+  transactions: { key: string; value: Transaction; indexes: { byDate: string } };
+  categories: { key: string; value: Category };
+  rules: { key: string; value: Rule };
+  recurring: { key: string; value: Recurring };
+  profiles: { key: string; value: ImportProfile };
+}
+
+const DB_NAME = 'gestione-spese';
+const DB_VERSION = 1;
+
+let dbPromise: Promise<IDBPDatabase<SpeseDB>> | null = null;
+
+function getDB(): Promise<IDBPDatabase<SpeseDB>> {
+  if (!dbPromise) {
+    dbPromise = openDB<SpeseDB>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        const tx = db.createObjectStore('transactions', { keyPath: 'id' });
+        tx.createIndex('byDate', 'date');
+        db.createObjectStore('categories', { keyPath: 'id' });
+        db.createObjectStore('rules', { keyPath: 'id' });
+        db.createObjectStore('recurring', { keyPath: 'id' });
+        db.createObjectStore('profiles', { keyPath: 'id' });
+      },
+    });
+  }
+  return dbPromise;
+}
+
+// ---- Categorie predefinite (create al primo avvio) ----
+const DEFAULT_CATEGORIES: Omit<Category, 'id'>[] = [
+  { name: 'Alimentari', color: '#22c55e', type: 'expense', budget: 400 },
+  { name: 'Trasporti', color: '#3b82f6', type: 'expense', budget: 150 },
+  { name: 'Casa', color: '#f59e0b', type: 'expense', budget: 800 },
+  { name: 'Bollette', color: '#ef4444', type: 'expense', budget: 200 },
+  { name: 'Svago', color: '#a855f7', type: 'expense', budget: 150 },
+  { name: 'Salute', color: '#ec4899', type: 'expense', budget: 100 },
+  { name: 'Ristoranti', color: '#14b8a6', type: 'expense', budget: 150 },
+  { name: 'Shopping', color: '#f97316', type: 'expense', budget: 100 },
+  { name: 'Stipendio', color: '#10b981', type: 'income', budget: 0 },
+  { name: 'Altre entrate', color: '#06b6d4', type: 'income', budget: 0 },
+];
+
+export async function ensureSeed(): Promise<void> {
+  const db = await getDB();
+  const count = await db.count('categories');
+  if (count === 0) {
+    const tx = db.transaction('categories', 'readwrite');
+    for (const c of DEFAULT_CATEGORIES) {
+      await tx.store.add({ ...c, id: uid() });
+    }
+    await tx.done;
+  }
+}
+
+// ---- Transazioni ----
+export async function getTransactions(): Promise<Transaction[]> {
+  const db = await getDB();
+  return db.getAll('transactions');
+}
+export async function putTransaction(t: Transaction): Promise<void> {
+  const db = await getDB();
+  await db.put('transactions', t);
+}
+export async function bulkPutTransactions(list: Transaction[]): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('transactions', 'readwrite');
+  for (const t of list) await tx.store.put(t);
+  await tx.done;
+}
+export async function deleteTransaction(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('transactions', id);
+}
+
+// ---- Categorie ----
+export async function getCategories(): Promise<Category[]> {
+  const db = await getDB();
+  return db.getAll('categories');
+}
+export async function putCategory(c: Category): Promise<void> {
+  const db = await getDB();
+  await db.put('categories', c);
+}
+export async function deleteCategory(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('categories', id);
+}
+
+// ---- Regole ----
+export async function getRules(): Promise<Rule[]> {
+  const db = await getDB();
+  return db.getAll('rules');
+}
+export async function putRule(r: Rule): Promise<void> {
+  const db = await getDB();
+  await db.put('rules', r);
+}
+export async function deleteRule(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('rules', id);
+}
+
+// ---- Movimenti ricorrenti ----
+export async function getRecurring(): Promise<Recurring[]> {
+  const db = await getDB();
+  return db.getAll('recurring');
+}
+export async function putRecurring(r: Recurring): Promise<void> {
+  const db = await getDB();
+  await db.put('recurring', r);
+}
+export async function deleteRecurring(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('recurring', id);
+}
+
+// ---- Profili di importazione ----
+export async function getProfiles(): Promise<ImportProfile[]> {
+  const db = await getDB();
+  return db.getAll('profiles');
+}
+export async function putProfile(p: ImportProfile): Promise<void> {
+  const db = await getDB();
+  await db.put('profiles', p);
+}
+export async function deleteProfile(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('profiles', id);
+}
+
+// ---- Backup / ripristino ----
+export interface BackupData {
+  version: number;
+  exportedAt: string;
+  transactions: Transaction[];
+  categories: Category[];
+  rules: Rule[];
+  recurring: Recurring[];
+  profiles: ImportProfile[];
+}
+
+export async function exportAll(): Promise<BackupData> {
+  const [transactions, categories, rules, recurring, profiles] =
+    await Promise.all([
+      getTransactions(),
+      getCategories(),
+      getRules(),
+      getRecurring(),
+      getProfiles(),
+    ]);
+  return {
+    version: DB_VERSION,
+    exportedAt: new Date().toISOString(),
+    transactions,
+    categories,
+    rules,
+    recurring,
+    profiles,
+  };
+}
+
+export async function importAll(data: BackupData): Promise<void> {
+  const db = await getDB();
+  const stores = ['transactions', 'categories', 'rules', 'recurring', 'profiles'] as const;
+  const tx = db.transaction(stores, 'readwrite');
+  await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
+  for (const t of data.transactions ?? []) await tx.objectStore('transactions').put(t);
+  for (const c of data.categories ?? []) await tx.objectStore('categories').put(c);
+  for (const r of data.rules ?? []) await tx.objectStore('rules').put(r);
+  for (const r of data.recurring ?? []) await tx.objectStore('recurring').put(r);
+  for (const p of data.profiles ?? []) await tx.objectStore('profiles').put(p);
+  await tx.done;
+}
