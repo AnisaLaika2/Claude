@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, todayKey } from "@/lib/db";
 import { computeTargets } from "@/lib/nutrition";
-import { addPlannedMeal, saveRecipe } from "@/lib/actions";
-import { buildHealthyWeek, recipeFromTemplate } from "@/lib/mealplan";
+import { addPlannedMeal, saveRecipe, addShoppingItem } from "@/lib/actions";
+import { buildHealthyWeek, recipeFromTemplate, buildWeekShopping } from "@/lib/mealplan";
 import { weekDays } from "@/lib/format";
 import { Ring, Segmented } from "@/components/ui";
 import { toast } from "@/components/toast";
@@ -92,7 +92,13 @@ export default function DietPage() {
       }
       await addPlannedMeal(m);
     }
-    toast.success(`Piano salutare di ${plan.length} pasti · ${targets.targetKcal} kcal/g`);
+    // One consolidated weekly shopping list (shop once, minimal waste).
+    const allRecipes = await db.recipes.toArray();
+    const oldPlanShop = await db.shopping.filter((s) => s.auto && (s.reason || "").startsWith("Piano settimanale")).toArray();
+    await db.shopping.bulkDelete(oldPlanShop.map((s) => s.id));
+    const shopping = buildWeekShopping(plan, allRecipes);
+    for (const s of shopping) await addShoppingItem({ name: s.name, category: s.category, quantity: s.quantity, unit: s.unit, auto: true, reason: s.reason });
+    toast.success(`Piano + lista spesa (${shopping.length}) · ${targets.targetKcal} kcal/g`);
   }
 
   const macros = [
@@ -196,7 +202,7 @@ export default function DietPage() {
       </div>
 
       <div className="sticky bottom-24 z-10 flex gap-2 lg:bottom-4">
-        <button className="btn-secondary flex-1" onClick={generatePlan}><IconSpark width={18} height={18} /> Genera piano salutare</button>
+        <button className="btn-secondary flex-1" onClick={generatePlan}><IconSpark width={18} height={18} /> Genera piano + spesa</button>
         <button className="btn-primary flex-1" onClick={save}>Salva profilo</button>
       </div>
     </div>

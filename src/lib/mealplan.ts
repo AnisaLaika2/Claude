@@ -1,5 +1,6 @@
-import type { DietProfile, MealType, Nutrition, PlannedMeal, Recipe, RecipeIngredient, Unit } from "./types";
+import type { DietProfile, FoodCategory, MealType, Nutrition, PlannedMeal, Recipe, RecipeIngredient, Unit } from "./types";
 import { computeTargets } from "./nutrition";
+import { guessCategoryExport } from "./misc";
 
 // Per-serving nutrition for a small library of balanced meals.
 interface MealTemplate {
@@ -118,16 +119,33 @@ export function buildHealthyWeek(
   };
 
   const meals: Omit<PlannedMeal, "id">[] = [];
-  const last: Partial<Record<MealType, string>> = {};
+
+  // Shopping once a week: pick a SMALL fixed menu per meal type and repeat it
+  // across the days so the same ingredients get reused, instead of buying many
+  // things for a single small use. Candidates spread by calories for variety.
+  const MENU_N: Record<MealType, number> = { breakfast: 2, lunch: 3, dinner: 3, snack: 2 };
+  const pickMenu = (pool: Candidate[], n: number): Candidate[] => {
+    const uniq: Candidate[] = [];
+    const seen = new Set<string>();
+    pool.forEach((c) => { if (!seen.has(c.title)) { seen.add(c.title); uniq.push(c); } });
+    if (uniq.length <= n) return uniq;
+    const s = uniq.slice().sort((a, b) => a.kcal - b.kcal);
+    const res: Candidate[] = [];
+    for (let i = 0; i < n; i++) res.push(s[Math.round((i * (s.length - 1)) / (n - 1))]);
+    return res.filter((c, i, a) => a.indexOf(c) === i);
+  };
+  const menu: Record<MealType, Candidate[]> = {
+    breakfast: pickMenu(pools.breakfast, MENU_N.breakfast),
+    lunch: pickMenu(pools.lunch, MENU_N.lunch),
+    dinner: pickMenu(pools.dinner, MENU_N.dinner),
+    snack: pickMenu(pools.snack, MENU_N.snack),
+  };
 
   days.forEach((date, di) => {
     (Object.keys(MEAL_SPLIT) as MealType[]).forEach((meal) => {
       const budget = t.targetKcal * MEAL_SPLIT[meal];
-      const pool = pools[meal].slice().sort((a, b) => Math.abs(a.kcal - budget) - Math.abs(b.kcal - budget));
-      const top = pool.slice(0, Math.min(4, pool.length));
-      let cand = top[di % top.length];
-      if (top.length > 1 && cand.title === last[meal]) cand = top[(di + 1) % top.length];
-      last[meal] = cand.title;
+      const list = menu[meal];
+      const cand = list[di % list.length];
 
       const serv = clampN(budget / cand.kcal, 0.5, 2.5);
       const nutrition: Nutrition = {
@@ -201,4 +219,56 @@ export function recipeFromTemplate(title: string): Omit<Recipe, "id" | "createdA
     tags: [tmpl.vegan ? "vegano" : tmpl.veg ? "vegetariano" : "", mealTag].filter(Boolean) as string[],
     source: "plan",
   };
+}
+
+// ── Weekly shopping list (shop once, minimal waste) ─────────────
+// Pantry staples you already have / buy occasionally — excluded from the list.
+const STAPLES = new Set(["olio evo", "sale", "pepe", "miele", "succo di limone", "salsa di soia", "semi di chia", "semi misti", "acqua", "burro d'arachidi", "spezie", "curry", "aceto", "cannella", "origano"]);
+const isStaple = (name: string) => {
+  const n = name.toLowerCase();
+  return STAPLES.has(n) || /olio|sale|pepe|spezie|origano|basilico|prezzemolo|cannella|curry|aceto/.test(n);
+};
+// Realistic purchase pack sizes: [size, unit, label]. Quantities round up to whole packs.
+const PACKS: Record<string, [number, Unit, string]> = {
+  "yogurt greco": [150, "g", "vasetti da 150g"], "fiocchi d'avena": [500, "g", "conf. 500g"], "frutti di bosco": [125, "g", "vaschette 125g"],
+  banana: [1, "pcs", "banane"], mandorle: [200, "g", "busta 200g"], noci: [200, "g", "busta 200g"], uova: [6, "pcs", "conf. da 6"],
+  albumi: [500, "g", "conf. 500g"], "pane integrale": [400, "g", "pagnotta 400g"], ricotta: [250, "g", "conf. 250g"],
+  "latte vegetale": [1000, "ml", "brick 1L"], "latte di soia": [1000, "ml", "brick 1L"], "latte di cocco": [400, "ml", "lattina 400ml"],
+  "petto di pollo": [500, "g", "conf. ~500g"], "fesa di tacchino": [150, "g", "conf. 150g"], quinoa: [500, "g", "conf. 500g"],
+  farro: [500, "g", "conf. 500g"], riso: [500, "g", "conf. 500g"], "riso integrale": [500, "g", "conf. 500g"],
+  "ceci lessati": [240, "g", "barattoli 240g"], "lenticchie lessate": [240, "g", "barattoli 240g"], "legumi misti": [240, "g", "barattoli 240g"],
+  "tonno al naturale": [80, "g", "scatolette 80g"], feta: [200, "g", "conf. 200g"], olive: [100, "g", "conf. 100g"],
+  salmone: [250, "g", "filetti ~250g"], merluzzo: [250, "g", "filetti ~250g"], tofu: [200, "g", "panetto 200g"],
+  hummus: [200, "g", "conf. 200g"], "gallette di riso": [10, "pcs", "confezione"], "piadina integrale": [4, "pcs", "conf. da 4"],
+};
+function toPurchase(name: string, qty: number, unit: Unit): { buyQty: number; unit: Unit; label: string | null } {
+  const p = PACKS[name.toLowerCase()];
+  if (p) { const packs = Math.max(1, Math.ceil(qty / p[0])); return { buyQty: packs * p[0], unit: p[1], label: p[2] }; }
+  const step = unit === "g" ? 100 : unit === "ml" ? 100 : 1;
+  return { buyQty: Math.ceil(qty / step) * step, unit, label: null };
+}
+
+export interface WeekShoppingItem { name: string; category: FoodCategory; quantity: number; unit: Unit; reason: string; }
+
+// Consolidate a week of planned meals into one shopping list, rounded to real
+// packs, with staples excluded — designed for a single weekly shop, no waste.
+export function buildWeekShopping(meals: Pick<PlannedMeal, "recipeId" | "servings">[], recipes: Recipe[]): WeekShoppingItem[] {
+  const totals: Record<string, { name: string; qty: number; unit: Unit }> = {};
+  for (const m of meals) {
+    const r = recipes.find((x) => x.id === m.recipeId);
+    if (!r) continue;
+    const factor = m.servings / (r.servings || 1);
+    for (const ing of r.ingredients) {
+      const k = ing.name.toLowerCase();
+      if (!totals[k]) totals[k] = { name: ing.name, qty: 0, unit: ing.unit };
+      totals[k].qty += ing.quantity * factor;
+    }
+  }
+  const out: WeekShoppingItem[] = [];
+  for (const t of Object.values(totals)) {
+    if (isStaple(t.name)) continue;
+    const pur = toPurchase(t.name, t.qty, t.unit);
+    out.push({ name: t.name, category: guessCategoryExport(t.name), quantity: pur.buyQty, unit: pur.unit, reason: "Piano settimanale" + (pur.label ? " · " + pur.label : "") });
+  }
+  return out;
 }

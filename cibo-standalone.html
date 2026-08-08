@@ -299,6 +299,47 @@ const MEAL_RECIPES={
   'Gallette di riso e burro d\'arachidi':{min:3,ing:[G('Gallette di riso',2,'pcs'),G('Burro d\'arachidi',20,'g')],steps:['Spalma il burro d\'arachidi sulle gallette.']},
   'Frutta fresca di stagione':{min:2,ing:[G('Frutta di stagione',200,'g')],steps:['Lava e servi la frutta.']},
 };
+/* Pantry staples you already have / buy occasionally — not added to the weekly list. */
+const STAPLES=new Set(['olio evo','sale','pepe','miele','succo di limone','salsa di soia','semi di chia','semi misti','acqua','burro d\'arachidi','spezie','curry','aceto','cannella','origano']);
+/* Realistic purchase pack sizes: [size, unit, label]. Quantities get rounded up to whole packs. */
+const PACKS={
+  'yogurt greco':[150,'g','vasetti da 150g'],'fiocchi d\'avena':[500,'g','conf. 500g'],'frutti di bosco':[125,'g','vaschette 125g'],
+  'banana':[1,'pcs','banane'],'mandorle':[200,'g','busta 200g'],'noci':[200,'g','busta 200g'],'uova':[6,'pcs','conf. da 6'],
+  'albumi':[500,'g','conf. 500g'],'pane integrale':[400,'g','pagnotta 400g'],'ricotta':[250,'g','conf. 250g'],
+  'latte vegetale':[1000,'ml','brick 1L'],'latte di soia':[1000,'ml','brick 1L'],'latte di cocco':[400,'ml','lattina 400ml'],
+  'petto di pollo':[500,'g','conf. ~500g'],'fesa di tacchino':[150,'g','conf. 150g'],'quinoa':[500,'g','conf. 500g'],
+  'farro':[500,'g','conf. 500g'],'riso':[500,'g','conf. 500g'],'riso integrale':[500,'g','conf. 500g'],
+  'ceci lessati':[240,'g','barattoli 240g'],'lenticchie lessate':[240,'g','barattoli 240g'],'legumi misti':[240,'g','barattoli 240g'],
+  'tonno al naturale':[80,'g','scatolette 80g'],'feta':[200,'g','conf. 200g'],'olive':[100,'g','conf. 100g'],
+  'salmone':[250,'g','filetti ~250g'],'merluzzo':[250,'g','filetti ~250g'],'tofu':[200,'g','panetto 200g'],
+  'hummus':[200,'g','conf. 200g'],'gallette di riso':[10,'pcs','confezione'],'piadina integrale':[4,'pcs','conf. da 4'],
+};
+function toPurchase(name,qty,unit){
+  const P=PACKS[name.toLowerCase()];
+  if(P){const packs=Math.max(1,Math.ceil(qty/P[0]));return{buyQty:packs*P[0],unit:P[1],label:P[2]};}
+  const step=unit==='g'?100:unit==='ml'?100:1;
+  return{buyQty:Math.ceil(qty/step)*step,unit,label:null};
+}
+// Consolidate all ingredients used across the selected week into totals.
+function buildWeekTotals(){
+  const days=weekDays(S.ui.weekOff);const totals={};
+  S.meals.filter(m=>days.includes(m.date)).forEach(m=>{const r=S.recipes.find(x=>x.id===m.recipeId);if(!r)return;
+    const factor=m.servings/(r.servings||1);
+    r.ingredients.forEach(i=>{const k=i.name.toLowerCase();if(!totals[k])totals[k]={name:i.name,qty:0,unit:i.unit};totals[k].qty+=i.quantity*factor;});});
+  return totals;
+}
+// One consolidated weekly shopping list, rounded to real packs, staples excluded.
+function generateWeekShopping(){
+  const totals=buildWeekTotals();
+  const isStaple=n=>{n=n.toLowerCase();return STAPLES.has(n)||/olio|sale|pepe|spezie|origano|basilico|prezzemolo|cannella|curry|aceto/.test(n)};
+  S.shopping=S.shopping.filter(s=>!(s.auto&&(s.reason||'').startsWith('Piano settimanale')));
+  let n=0;
+  Object.values(totals).forEach(t=>{if(isStaple(t.name))return;
+    const pur=toPurchase(t.name,t.qty,t.unit);
+    S.shopping.push({id:uid('shp'),name:t.name,category:guessCat(t.name),quantity:pur.buyQty,unit:pur.unit,checked:false,auto:true,
+      reason:'Piano settimanale'+(pur.label?' · '+pur.label:''),createdAt:new Date().toISOString()});n++;});
+  return n;
+}
 
 /* ---------- utils ---------- */
 const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -456,18 +497,22 @@ function generateHealthyWeek(){
   const build=type=>{let a=MEALLIB.filter(m=>m.t===type);if(type==='lunch'||type==='dinner')a=a.concat(recCand);
     let f=a.filter(suit);if(!f.length)f=a.filter(okAller);if(!f.length)f=a.filter(okDiet);if(!f.length)f=a;return f};
   const pools={breakfast:build('breakfast'),lunch:build('lunch'),dinner:build('dinner'),snack:build('snack')};
+  // Shopping once a week: choose a SMALL fixed menu per meal type and repeat it
+  // across the days, so the same ingredients get reused instead of buying many
+  // things for a single 30g use. Pick candidates spread by calories for variety.
+  const MENU_N={breakfast:2,lunch:3,dinner:3,snack:2};
+  const pickMenu=(pool,n)=>{const u=[],seen=new Set();pool.forEach(c=>{if(!seen.has(c.title)){seen.add(c.title);u.push(c)}});
+    if(u.length<=n)return u;const s=u.slice().sort((a,b)=>a.kcal-b.kcal);const res=[];
+    for(let i=0;i<n;i++)res.push(s[Math.round(i*(s.length-1)/(n-1))]);return res.filter((c,i,a)=>a.indexOf(c)===i)};
+  const menu={breakfast:pickMenu(pools.breakfast,MENU_N.breakfast),lunch:pickMenu(pools.lunch,MENU_N.lunch),
+    dinner:pickMenu(pools.dinner,MENU_N.dinner),snack:pickMenu(pools.snack,MENU_N.snack)};
   const days=weekDays(S.ui.weekOff);
   S.meals=S.meals.filter(m=>!days.includes(m.date));
-  const last={};
   days.forEach((date,di)=>{
     Object.keys(MEAL_SPLIT).forEach(meal=>{
+      const list=menu[meal];const cand=list[di%list.length];
       const budget=t.kcal*MEAL_SPLIT[meal];
-      const pool=pools[meal].slice().sort((x,y)=>Math.abs(x.kcal-budget)-Math.abs(y.kcal-budget));
-      const top=pool.slice(0,Math.min(4,pool.length));
-      let cand=top[di%top.length];
-      if(top.length>1&&cand.title===last[meal])cand=top[(di+1)%top.length];
-      last[meal]=cand.title;
-      // Scale the portion continuously so the meal lands on its calorie budget.
+      // Scale the portion continuously so the day lands on its calorie budget.
       const serv=clamp(budget/cand.kcal,.5,2.5);
       const nut={kcal:Math.round(cand.kcal*serv),protein:Math.round(cand.p*serv),carbs:Math.round(cand.c*serv),fat:Math.round(cand.f*serv)};
       const hint=serv<.85?' · porzione piccola':serv>1.6?' · porzione doppia':serv>1.25?' · porzione abbondante':'';
@@ -634,9 +679,9 @@ function vDiet(){const p=S.profile;const t=targets(p);
     <div class="row" style="gap:8px"><span style="color:rgb(var(--brand))">${svg('leaf',20)}</span><b>Piano settimanale salutare</b></div>
     <p style="font-size:13px;color:rgb(var(--muted));margin-top:8px;line-height:1.45">${goalLine}</p>
     <div class="grid g4" style="margin-top:14px;text-align:center">${[['Colazione','25%'],['Pranzo','35%'],['Cena','30%'],['Spuntino','10%']].map(([l,v])=>`<div><div style="font-weight:800;color:rgb(var(--brand))" class="tnum">${v}</div><div style="font-size:10px;color:rgb(var(--muted));margin-top:2px">${l}</div></div>`).join('')}</div>
-    <p style="font-size:11px;color:rgb(var(--faint));margin-top:12px">Rispetta allergie e regime alimentare. Le porzioni vengono scalate per centrare le calorie del tuo obiettivo. Genera il piano per la settimana attualmente selezionata nel Planner.</p>
+    <p style="font-size:11px;color:rgb(var(--faint));margin-top:12px;line-height:1.5">Pensato per <b style="color:rgb(var(--fg))">una sola spesa a settimana</b>: gli stessi ingredienti vengono riusati in più pasti e le quantità arrotondate alle confezioni reali (niente prodotti comprati per usarne 30g). Rispetta allergie e regime. Genera anche la <b style="color:rgb(var(--fg))">lista della spesa</b> consolidata. 🧊 Congela le porzioni extra di carne e pesce dei primi giorni.</p>
   </div>
-  <button class="btn pri block" style="margin-top:14px" data-action="genplan">${svg('spark',18)} Genera piano salutare (7 giorni)</button>`;
+  <button class="btn pri block" style="margin-top:14px" data-action="genplan">${svg('spark',18)} Genera piano + lista spesa</button>`;
 }
 
 /* ---------- STATS ---------- */
@@ -779,7 +824,7 @@ document.addEventListener('click',e=>{
     case'dact':S.profile.activity=el.dataset.v;persist();render();break;
     case'ddiet':S.profile.diet=el.dataset.v;persist();render();break;
     case'dpace':S.profile.pace=el.dataset.v;persist();render();break;
-    case'genplan':{const res=generateHealthyWeek();persist();S.ui.tab='planner';render();toast('Piano salutare creato · ~'+res.kcal+' kcal/g');break}
+    case'genplan':{const res=generateHealthyWeek();const sn=generateWeekShopping();persist();S.ui.tab='planner';render();toast('Piano + lista spesa ('+sn+' articoli) · '+res.kcal+' kcal/g');break}
     case'asksugg':ask(el.dataset.q);break;
     case'askbtn':{const inp=document.getElementById('askinput');ask(inp.value);break}
     case'resetdata':if(confirm('Cancellare tutti i dati?')){S=seed();persist();closeSheet();applyTheme();render();toast('Dati ripristinati')}break;
