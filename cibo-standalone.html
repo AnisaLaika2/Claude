@@ -236,6 +236,38 @@ const LOC={fridge:['Frigo','🧊'],freezer:['Freezer','❄️'],pantry:['Dispens
 const UNITS={g:'g',kg:'kg',ml:'ml',l:'l',pcs:'pz',pack:'conf.',can:'lattina',bottle:'bott.',slice:'fetta'};
 const UK=Object.keys(UNITS);
 const CO2={produce:.9,dairy:3.2,meat:15,fish:5,bakery:1.4,pantry:1.1,frozen:2.5,beverages:.8,snacks:2.3,condiments:1.5,spices:1,other:1.5};
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+/* Healthy meal library — per-serving nutrition. veg=vegetarian, vegan=vegan, aller=allergen keywords */
+const MEAL_SPLIT={breakfast:.25,lunch:.35,dinner:.30,snack:.10};
+const MEALLIB=[
+  {t:'breakfast',title:'Yogurt greco, avena e frutti di bosco',kcal:320,p:22,c:38,f:9,veg:true,aller:['latte','glutine']},
+  {t:'breakfast',title:'Porridge d\'avena con banana e mandorle',kcal:360,p:12,c:55,f:11,veg:true,vegan:true,aller:['glutine','frutta a guscio','mandorle']},
+  {t:'breakfast',title:'Uova strapazzate e pane integrale',kcal:340,p:22,c:30,f:14,veg:true,aller:['uova','glutine']},
+  {t:'breakfast',title:'Ricotta, pane integrale e miele',kcal:330,p:18,c:40,f:10,veg:true,aller:['latte','glutine']},
+  {t:'breakfast',title:'Pancake d\'avena e albumi',kcal:330,p:24,c:42,f:6,veg:true,aller:['uova','glutine']},
+  {t:'breakfast',title:'Overnight oats con latte di soia e frutta',kcal:340,p:14,c:52,f:9,veg:true,vegan:true,aller:['glutine','soia']},
+  {t:'lunch',title:'Insalata di pollo, quinoa e verdure',kcal:480,p:38,c:40,f:16,aller:[]},
+  {t:'lunch',title:'Riso integrale, ceci e verdure',kcal:450,p:16,c:70,f:10,veg:true,vegan:true,aller:[]},
+  {t:'lunch',title:'Wrap integrale con tacchino e insalata',kcal:430,p:32,c:42,f:12,aller:['glutine']},
+  {t:'lunch',title:'Farro con tonno, pomodorini e olive',kcal:470,p:28,c:55,f:12,aller:['pesce','glutine']},
+  {t:'lunch',title:'Bowl di lenticchie e verdure arrosto',kcal:420,p:20,c:58,f:9,veg:true,vegan:true,aller:[]},
+  {t:'lunch',title:'Insalatona di ceci, feta e cetrioli',kcal:440,p:20,c:38,f:22,veg:true,aller:['latte']},
+  {t:'dinner',title:'Salmone al forno con verdure',kcal:420,p:34,c:12,f:24,aller:['pesce']},
+  {t:'dinner',title:'Petto di pollo grigliato e insalata',kcal:380,p:44,c:8,f:16,aller:[]},
+  {t:'dinner',title:'Frittata di verdure e insalata',kcal:340,p:22,c:12,f:20,veg:true,aller:['uova']},
+  {t:'dinner',title:'Zuppa di legumi e pane integrale',kcal:380,p:20,c:55,f:8,veg:true,vegan:true,aller:['glutine']},
+  {t:'dinner',title:'Merluzzo al vapore con patate e broccoli',kcal:360,p:34,c:32,f:8,aller:['pesce']},
+  {t:'dinner',title:'Tofu saltato con verdure e riso',kcal:400,p:22,c:45,f:14,veg:true,vegan:true,aller:['soia']},
+  {t:'snack',title:'Frutta fresca e mandorle',kcal:180,p:5,c:22,f:9,veg:true,vegan:true,aller:['frutta a guscio','mandorle']},
+  {t:'snack',title:'Yogurt greco',kcal:150,p:15,c:8,f:5,veg:true,aller:['latte']},
+  {t:'snack',title:'Hummus con carote',kcal:170,p:6,c:18,f:9,veg:true,vegan:true,aller:['sesamo']},
+  {t:'snack',title:'Ricotta e noci',kcal:200,p:12,c:6,f:14,veg:true,aller:['latte','frutta a guscio','noci']},
+  {t:'snack',title:'Gallette di riso e burro d\'arachidi',kcal:190,p:7,c:20,f:9,veg:true,vegan:true,aller:['arachidi']},
+  {t:'breakfast',title:'Macedonia di frutta con semi di chia',kcal:260,p:6,c:44,f:7,veg:true,vegan:true,aller:[]},
+  {t:'breakfast',title:'Smoothie di frutta, spinaci e semi',kcal:280,p:7,c:46,f:8,veg:true,vegan:true,aller:[]},
+  {t:'dinner',title:'Curry di ceci e verdure con riso',kcal:430,p:18,c:62,f:12,veg:true,vegan:true,aller:[]},
+  {t:'snack',title:'Frutta fresca di stagione',kcal:120,p:2,c:28,f:1,veg:true,vegan:true,aller:[]},
+];
 
 /* ---------- utils ---------- */
 const uid=p=>p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -356,6 +388,42 @@ function genRecipe(ings,c){const main=ings.slice(0,3);const has=re=>ings.some(i=
       carb?'Cuoci la parte di carboidrati e unisci il tutto.':'Regola di sale, pepe ed erbe aromatiche.','Manteca, impiatta e servi caldo.'],
     minutes,difficulty:'easy',servings:c.servings||2,nutrition:{kcal,protein:prot?34:16,carbs:carb?55:24,fat:18},
     tags:[c.diet&&c.diet!=='none'?c.diet:'svuota-frigo',minutes<=20?'veloce':'facile'],source:'ai',createdAt:new Date().toISOString()}}
+
+/* Build a healthy 7-day plan that hits the daily calorie target for the user's goal,
+   split across balanced meals and respecting allergies + diet. */
+function generateHealthyWeek(){
+  const p=S.profile,t=targets(p);
+  const allerg=p.allergies.map(a=>a.toLowerCase()).filter(Boolean);
+  const okDiet=c=>{if(p.diet==='vegetarian')return!!(c.veg||c.vegan);if(p.diet==='vegan')return!!c.vegan;return true};
+  const okAller=c=>!(c.aller||[]).some(a=>allerg.some(x=>a.includes(x)||x.includes(a)));
+  const suit=c=>okDiet(c)&&okAller(c);
+  const recCand=S.recipes.map(r=>({title:r.title,kcal:r.nutrition.kcal,p:r.nutrition.protein,c:r.nutrition.carbs,f:r.nutrition.fat,recipeId:r.id,
+    veg:r.tags.includes('vegetariano')||r.tags.includes('vegano'),vegan:r.tags.includes('vegano'),aller:[]}));
+  // Allergies are safety-critical: relax diet before ever relaxing an allergy.
+  const build=type=>{let a=MEALLIB.filter(m=>m.t===type);if(type==='lunch'||type==='dinner')a=a.concat(recCand);
+    let f=a.filter(suit);if(!f.length)f=a.filter(okAller);if(!f.length)f=a.filter(okDiet);if(!f.length)f=a;return f};
+  const pools={breakfast:build('breakfast'),lunch:build('lunch'),dinner:build('dinner'),snack:build('snack')};
+  const days=weekDays(S.ui.weekOff);
+  S.meals=S.meals.filter(m=>!days.includes(m.date));
+  const last={};
+  days.forEach((date,di)=>{
+    Object.keys(MEAL_SPLIT).forEach(meal=>{
+      const budget=t.kcal*MEAL_SPLIT[meal];
+      const pool=pools[meal].slice().sort((x,y)=>Math.abs(x.kcal-budget)-Math.abs(y.kcal-budget));
+      const top=pool.slice(0,Math.min(4,pool.length));
+      let cand=top[di%top.length];
+      if(top.length>1&&cand.title===last[meal])cand=top[(di+1)%top.length];
+      last[meal]=cand.title;
+      // Scale the portion continuously so the meal lands on its calorie budget.
+      const serv=clamp(budget/cand.kcal,.5,2.5);
+      const nut={kcal:Math.round(cand.kcal*serv),protein:Math.round(cand.p*serv),carbs:Math.round(cand.c*serv),fat:Math.round(cand.f*serv)};
+      const hint=serv<.85?' · porzione piccola':serv>1.6?' · porzione doppia':serv>1.25?' · porzione abbondante':'';
+      S.meals.push({id:uid('mea'),date,meal,recipeId:cand.recipeId,title:cand.title+hint,servings:+serv.toFixed(2),nutrition:nut});
+    });
+  });
+  S.ui.selDay=days.includes(todayKey())?todayKey():days[0];
+  return {kcal:t.kcal};
+}
 
 /* ---------- render infra ---------- */
 const view=document.getElementById('view');
@@ -483,11 +551,13 @@ function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=da
     <div class="row" style="gap:4px"><button class="iconbtn" data-action="week" data-v="-1">‹</button><button class="chip" data-action="week" data-v="0">Oggi</button><button class="iconbtn" data-action="week" data-v="1">›</button></div></div>
   <div class="weekstrip" style="margin-top:14px">${days.map((d,i)=>{const dm=S.meals.filter(m=>m.date===d);const kc=Math.round(dm.reduce((s,m)=>s+(m.nutrition?.kcal||0),0));return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="font-size:9px;color:rgb(var(--faint));margin-top:2px" class="tnum">${kc||''}</div></button>`}).join('')}</div>
   <div class="card" style="margin-top:16px;padding:6px 14px">${Object.keys(MEALS).map(meal=>{const cm=dayMeals(meal);return `<div class="mealrow"><div class="mlab">${MEALS[meal]}</div><div style="flex:1;min-width:0">${cm.map(m=>`<div class="mealchip ${m.cooked?'cooked':''}" data-action="meal" data-id="${m.id}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.title)}</span><span style="font-size:11px;opacity:.8">${m.nutrition?Math.round(m.nutrition.kcal)+'kcal':''}</span></div>`).join('')}<button class="addmini" data-action="addmeal" data-meal="${meal}" data-date="${sel}">+ Aggiungi</button></div></div>`}).join('')}</div>
-  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:12px">Riepilogo settimana</p><div class="grid g4">${[['Media kcal',Math.round(wk.kcal/7)],['Prot',Math.round(wk.p)+'g'],['Carb',Math.round(wk.c)+'g'],['Grassi',Math.round(wk.f)+'g']].map(([l,v])=>`<div><div style="font-size:18px;font-weight:800" class="tnum">${v}</div><div style="font-size:11px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`;
+  <div class="card" style="margin-top:16px;padding:16px"><p style="font-weight:800;margin-bottom:4px">Media giornaliera</p><p style="font-size:11px;color:rgb(var(--faint));margin-bottom:12px">Obiettivo: ${targets(S.profile).kcal} kcal/g</p><div class="grid g4">${[['kcal',Math.round(wk.kcal/7)],['Prot',Math.round(wk.p/7)+'g'],['Carb',Math.round(wk.c/7)+'g'],['Grassi',Math.round(wk.f/7)+'g']].map(([l,v])=>`<div><div style="font-size:18px;font-weight:800" class="tnum">${v}</div><div style="font-size:11px;color:rgb(var(--muted))">${l}</div></div>`).join('')}</div></div>`;
 }
 
 /* ---------- DIET ---------- */
 function vDiet(){const p=S.profile;const t=targets(p);
+  const gk=GK[p.goal];const goalTxt={lose:'Dimagrimento',maintain:'Mantenimento',gain:'Aumento peso',muscle:'Massa muscolare'}[p.goal];
+  const goalLine=`Obiettivo: <b style="color:rgb(var(--fg))">${goalTxt}</b> · ${gk<0?'deficit di ~'+Math.abs(gk)+' kcal/g':gk>0?'surplus di ~'+gk+' kcal/g':'calorie di mantenimento'}. Il piano distribuisce <b style="color:rgb(var(--fg))">${t.kcal} kcal/g</b> su 4 pasti bilanciati.`;
   const macros=[['Proteine',t.protein,'--info',t.protein*4],['Carboidrati',t.carbs,'--warning',t.carbs*4],['Grassi',t.fat,'--danger',t.fat*9]];
   const GOALS=[['lose','Dimagrire','📉'],['maintain','Mantenere','⚖️'],['gain','Aumentare','📈'],['muscle','Massa','💪']];
   const ACTS=[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']];
@@ -503,7 +573,13 @@ function vDiet(){const p=S.profile;const t=targets(p);
     <div class="fgroup"><label class="lab">Attività</label><div class="catgrid">${ACTS.map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-action="dact" data-v="${k}">${l}</button>`).join('')}</div></div>
     <div class="fgroup"><label class="lab">Regime</label><div class="catgrid">${DIETS.map(([k,l])=>`<button class="chip ${p.diet===k?'on':''}" data-action="ddiet" data-v="${k}">${l}</button>`).join('')}</div></div>
   </div>
-  <button class="btn pri block" style="margin-top:16px" data-action="genplan">${svg('spark',18)} Genera piano settimanale</button>`;
+  <div class="card" style="margin-top:16px;padding:16px">
+    <div class="row" style="gap:8px"><span style="color:rgb(var(--brand))">${svg('leaf',20)}</span><b>Piano settimanale salutare</b></div>
+    <p style="font-size:13px;color:rgb(var(--muted));margin-top:8px;line-height:1.45">${goalLine}</p>
+    <div class="grid g4" style="margin-top:14px;text-align:center">${[['Colazione','25%'],['Pranzo','35%'],['Cena','30%'],['Spuntino','10%']].map(([l,v])=>`<div><div style="font-weight:800;color:rgb(var(--brand))" class="tnum">${v}</div><div style="font-size:10px;color:rgb(var(--muted));margin-top:2px">${l}</div></div>`).join('')}</div>
+    <p style="font-size:11px;color:rgb(var(--faint));margin-top:12px">Rispetta allergie e regime alimentare. Le porzioni vengono scalate per centrare le calorie del tuo obiettivo. Genera il piano per la settimana attualmente selezionata nel Planner.</p>
+  </div>
+  <button class="btn pri block" style="margin-top:14px" data-action="genplan">${svg('spark',18)} Genera piano salutare (7 giorni)</button>`;
 }
 
 /* ---------- STATS ---------- */
@@ -644,7 +720,7 @@ document.addEventListener('click',e=>{
     case'dgoal':S.profile.goal=el.dataset.v;persist();render();break;
     case'dact':S.profile.activity=el.dataset.v;persist();render();break;
     case'ddiet':S.profile.diet=el.dataset.v;persist();render();break;
-    case'genplan':{const pool=S.recipes;if(!pool.length){toast('Aggiungi ricette prima');break}let n=0;weekDays(0).forEach(d=>{['lunch','dinner'].forEach(meal=>{const r=pool[Math.floor(Math.random()*pool.length)];S.meals.push({id:uid('mea'),date:d,meal,recipeId:r.id,title:r.title,servings:r.servings,nutrition:{kcal:r.nutrition.kcal*r.servings,protein:r.nutrition.protein*r.servings,carbs:r.nutrition.carbs*r.servings,fat:r.nutrition.fat*r.servings}});n++})});persist();S.ui.tab='planner';render();toast(n+' pasti pianificati');break}
+    case'genplan':{const res=generateHealthyWeek();persist();S.ui.tab='planner';render();toast('Piano salutare creato · ~'+res.kcal+' kcal/g');break}
     case'asksugg':ask(el.dataset.q);break;
     case'askbtn':{const inp=document.getElementById('askinput');ask(inp.value);break}
     case'resetdata':if(confirm('Cancellare tutti i dati?')){S=seed();persist();closeSheet();applyTheme();render();toast('Dati ripristinati')}break;

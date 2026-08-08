@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, todayKey } from "@/lib/db";
 import { computeTargets } from "@/lib/nutrition";
 import { addPlannedMeal } from "@/lib/actions";
+import { buildHealthyWeek } from "@/lib/mealplan";
 import { weekDays } from "@/lib/format";
 import { Ring, Segmented } from "@/components/ui";
 import { toast } from "@/components/toast";
@@ -65,23 +66,13 @@ export default function DietPage() {
 
   async function generatePlan() {
     const recipes = await db.recipes.toArray();
-    if (recipes.length === 0) return toast.error("Aggiungi prima qualche ricetta");
-    const allergySet = new Set(p.allergies.map((a) => a.toLowerCase()));
-    const safe = recipes.filter((r) => !r.ingredients.some((i) => [...allergySet].some((a) => i.name.toLowerCase().includes(a))));
-    const pool = safe.length ? safe : recipes;
     const days = weekDays();
-    let count = 0;
-    for (const date of days) {
-      for (const meal of ["lunch", "dinner"] as const) {
-        const r = pool[Math.floor(Math.random() * pool.length)];
-        await addPlannedMeal({
-          date, meal, recipeId: r.id, title: r.title, servings: r.servings,
-          nutrition: { kcal: r.nutrition.kcal * r.servings, protein: r.nutrition.protein * r.servings, carbs: r.nutrition.carbs * r.servings, fat: r.nutrition.fat * r.servings },
-        });
-        count++;
-      }
-    }
-    toast.success(`Piano di ${count} pasti generato nel planner`);
+    // Replace any existing meals for this week, then build a balanced plan.
+    const existing = await db.meals.where("date").between(days[0], days[6] + "￿").toArray();
+    await db.meals.bulkDelete(existing.map((m) => m.id));
+    const plan = buildHealthyWeek({ ...p, ...targets }, recipes, days);
+    for (const m of plan) await addPlannedMeal(m);
+    toast.success(`Piano salutare di ${plan.length} pasti · ${targets.targetKcal} kcal/g`);
   }
 
   const macros = [
@@ -168,7 +159,7 @@ export default function DietPage() {
       </div>
 
       <div className="sticky bottom-24 z-10 flex gap-2 lg:bottom-4">
-        <button className="btn-secondary flex-1" onClick={generatePlan}><IconSpark width={18} height={18} /> Genera piano settimanale</button>
+        <button className="btn-secondary flex-1" onClick={generatePlan}><IconSpark width={18} height={18} /> Genera piano salutare</button>
         <button className="btn-primary flex-1" onClick={save}>Salva profilo</button>
       </div>
     </div>
