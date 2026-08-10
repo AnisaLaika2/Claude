@@ -164,6 +164,12 @@
     background:none;cursor:pointer;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
   .addmini:hover{border-color:rgb(var(--brand)/.4);color:rgb(var(--brand))}
   .addmini:active{transform:scale(.98)}
+  .seg{display:flex;background:rgb(var(--surface2));border-radius:13px;padding:3px}
+  .seg button{flex:1;border:none;background:none;padding:9px;border-radius:10px;font-size:13px;font-weight:700;color:rgb(var(--muted));cursor:pointer;font-family:inherit;transition:.15s}
+  .seg button.on{background:rgb(var(--surface));color:rgb(var(--fg));box-shadow:var(--shadow)}
+  .hint{font-size:12px;color:rgb(var(--muted));line-height:1.5}
+  .obtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid rgb(var(--border));background:rgb(var(--surface));border-radius:14px;padding:14px;font-weight:600;cursor:pointer;color:inherit;font-family:inherit;font-size:14px;margin-bottom:8px}
+  .obtn .oe{font-size:20px}
   .ring{transform:rotate(-90deg)}
   .rlist button{width:100%;display:flex;gap:11px;align-items:center;text-align:left;border:1px solid rgb(var(--border));
     background:rgb(var(--surface));border-radius:14px;padding:11px;cursor:pointer;margin-bottom:8px;color:rgb(var(--fg));font-family:inherit}
@@ -390,13 +396,14 @@ function seed(){
   ];
   return {pantry,shopping:[],recipes,meals:[],waste:[],consumption:[],
     profile:{name:'Tu',sex:'female',age:30,heightCm:170,weightKg:68,goal:'lose',pace:'moderate',activity:'moderate',allergies:[],preferences:[],diet:'none'},
-    settings:{theme:'system',currency:'€'},ui:{tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',weekOff:0,selDay:todayKey()}};
+    settings:{theme:'system',currency:'€',onboarded:false},ui:{tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',pantryView:'list',dietOpen:false,weekOff:0,selDay:todayKey()}};
 }
 
 /* ---------- state ---------- */
 let S=load();
 if(!S){S=seed();persist()}
 if(!S.ui)S.ui={tab:'home',pantryQ:'',pantryCat:'all',pantryExp:'all',fridgeLoc:'fridge',weekOff:0,selDay:todayKey()};
+if(S.ui.pantryView===undefined)S.ui.pantryView='list';if(S.ui.dietOpen===undefined)S.ui.dietOpen=false;
 let focusId=null;
 
 /* ---------- nutrition ---------- */
@@ -534,10 +541,10 @@ function generateHealthyWeek(){
 
 /* ---------- render infra ---------- */
 const view=document.getElementById('view');
-const TABS=[['home','Home','home'],['pantry','Dispensa','pantry'],['shopping','Spesa','cart'],['recipes','Ricette','chef'],['planner','Planner','cal']];
+const TABS=[['home','Oggi','home'],['recipes','Ricette','chef'],['planner','Piano','cal'],['pantry','Dispensa','pantry'],['shopping','Spesa','cart']];
 function render(){
   const t=S.ui.tab;
-  const fn={home:vHome,pantry:vPantry,shopping:vShopping,recipes:vRecipes,planner:vPlanner,fridge:vFridge,diet:vDiet,stats:vStats,assistant:vAssistant}[t]||vHome;
+  const fn={home:vHome,pantry:vPantry,shopping:vShopping,recipes:vRecipes,planner:vPiano,diet:vPiano,fridge:vPantry,stats:vStats,assistant:vAssistant}[t]||vHome;
   view.innerHTML=fn();
   // tab bar
   document.getElementById('tab').innerHTML=TABS.map(([k,l,ic])=>`<button data-action="nav" data-tab="${k}" class="${t===k?'on':''}">${svg(ic,23)}<span>${l}</span></button>`).join('');
@@ -560,6 +567,7 @@ function vHome(){
   const kcal=Math.round(cons.reduce((s,c)=>s+(c.nutrition?.kcal||0),0));const tgt=targets(S.profile).kcal;
   const saved=cons.reduce((s,c)=>s+(c.savedValue||0),0);
   const wasted=S.waste.filter(w=>w.date===tk).reduce((s,w)=>s+w.estValue,0);
+  const order=Object.keys(MEALS);const todayMeals=S.meals.filter(m=>m.date===tk).sort((a,b)=>order.indexOf(a.meal)-order.indexOf(b.meal));
   const sugg=S.recipes.map(r=>({r,sc:matchScore(r)+(r.ingredients.some(i=>expiring.some(e=>e.name.toLowerCase().includes(i.name.toLowerCase())||i.name.toLowerCase().includes(e.name.toLowerCase())))?.4:0)})).sort((a,b)=>b.sc-a.sc).slice(0,3);
   const h=new Date().getHours();const greet=h<12?'Buongiorno':h<18?'Buon pomeriggio':'Buonasera';
   return `
@@ -574,6 +582,11 @@ function vHome(){
     ${stat('leaf','--success',money(saved),'Risparmiati oggi')}
     ${stat('flame','--danger',money(wasted),'Sprecati oggi')}
   </div>
+  <section>
+    <div class="sechead"><h2>Oggi mangi</h2><button class="link" data-action="nav" data-tab="planner">Piano</button></div>
+    ${todayMeals.length?`<div class="card" style="overflow:hidden">${todayMeals.map((m,i)=>`<button data-action="meal" data-id="${m.id}" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px;text-align:left;background:none;border:none;${i?'border-top:1px solid rgb(var(--border))':''};color:inherit;cursor:pointer;${m.cooked?'opacity:.6':''}"><span style="width:34px;height:34px;border-radius:10px;background:rgb(var(--brand)/.1);display:grid;place-items:center;font-size:17px;flex-shrink:0">${MEAL_EMOJI[m.meal]}</span><span style="flex:1;min-width:0"><span style="display:block;font-size:11px;color:rgb(var(--faint))">${MEALS[m.meal]}</span><span style="display:block;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.cooked?'✓ ':''}${esc(m.title)}</span></span><span class="tnum" style="font-weight:800;font-size:13px;flex-shrink:0">${m.nutrition?Math.round(m.nutrition.kcal):''}<span style="font-size:9px;color:rgb(var(--faint));font-weight:600"> kcal</span></span></button>`).join('')}</div>`
+      :`<div class="card" style="padding:18px;text-align:center"><p style="font-weight:700">Nessun piano per oggi</p><p class="hint" style="margin-top:4px;margin-bottom:12px">Crea la tua dieta e i pasti della settimana in un tap.</p><button class="btn pri block" data-action="nav" data-tab="planner">${svg('spark',18)} Vai al Piano</button></div>`}
+  </section>
   <section>
     <div class="sechead"><h2>Da consumare presto</h2><button class="link" data-action="nav" data-tab="pantry">Dispensa</button></div>
     ${expiring.length?`<div class="hscroll">${expiring.slice(0,8).map(it=>{const c=EXPC[expStatus(it.expiryDate)];return `<div class="card" style="width:150px;flex-shrink:0;padding:13px"><div class="row" style="justify-content:space-between"><span style="font-size:24px">${CAT[it.category][1]}</span><span class="tnum" style="font-size:11px;font-weight:800;color:rgb(var(${c}))">${expStatus(it.expiryDate)==='expired'?'Scaduto':relDay(it.expiryDate)}</span></div><p style="font-weight:700;font-size:14px;margin-top:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.name)}</p><p style="font-size:12px;color:rgb(var(--faint));margin-top:2px">${qtyStr(it)}</p></div>`}).join('')}</div>`
@@ -592,6 +605,19 @@ function emptyBox(ic,t,s,btn){return `<div class="empty"><div class="e-ic">${ic}
 
 /* ---------- PANTRY ---------- */
 function vPantry(){
+  const pv=S.ui.pantryView||'list';
+  const head=`<div class="row" style="justify-content:space-between"><div><h1 class="title">Dispensa</h1><p class="sub">${S.pantry.filter(i=>i.quantity>0).length} prodotti attivi</p></div>
+    <button class="btn pri" data-action="additem">${svg('plus',18)} Aggiungi</button></div>
+  <div class="seg" style="margin-top:14px"><button class="${pv==='list'?'on':''}" data-action="pview" data-v="list">📋 Elenco</button><button class="${pv==='fridge'?'on':''}" data-action="pview" data-v="fridge">🧊 Frigo</button></div>`;
+  if(pv==='fridge'){
+    const loc=S.ui.fridgeLoc;const inl=S.pantry.filter(i=>i.location===loc&&i.quantity>0);const shelves=[[],[],[]];inl.forEach((it,i)=>shelves[i%3].push(it));
+    return head+`<div class="chips" style="margin-top:14px">${Object.keys(LOC).map(k=>`<button class="chip ${loc===k?'on':''}" data-action="floc" data-v="${k}">${LOC[k][1]} ${LOC[k][0]}</button>`).join('')}</div>
+    <div class="card" style="margin-top:14px;padding:12px;background:linear-gradient(180deg,rgb(var(--surface)),rgb(var(--surface2)))">
+      <div class="row" style="justify-content:space-between;padding:2px 6px 10px"><b style="font-size:14px">${LOC[loc][0]}</b><span style="font-size:12px;color:rgb(var(--muted))">${inl.length} prodotti</span></div>
+      <div class="grid" style="gap:10px">${shelves.map(sh=>`<div class="shelf">${sh.length?`<div class="hscroll" style="gap:8px">${sh.map(fitem).join('')}</div>`:'<div style="display:grid;place-items:center;height:46px;font-size:12px;color:rgb(var(--faint))">Ripiano vuoto</div>'}</div>`).join('')}</div>
+    </div>
+    <div class="row" style="justify-content:center;gap:18px;margin-top:14px;font-size:12px;color:rgb(var(--muted))">${[['--success','Fresco'],['--warning','In scadenza'],['--danger','Urgente']].map(([c,l])=>`<span class="row" style="gap:6px"><span style="width:9px;height:9px;border-radius:99px;background:rgb(var(${c}))"></span>${l}</span>`).join('')}</div>`;
+  }
   const q=S.ui.pantryQ.toLowerCase(),cat=S.ui.pantryCat,ex=S.ui.pantryExp;
   let items=S.pantry.slice().sort((a,b)=>(a.expiryDate||'z').localeCompare(b.expiryDate||'z'));
   items=items.filter(i=>{if(q&&!i.name.toLowerCase().includes(q))return false;if(cat!=='all'&&i.category!==cat)return false;
@@ -600,9 +626,7 @@ function vPantry(){
     if(ex==='low'&&!(i.quantity>0&&r<=.25))return false;if(ex==='out'&&i.quantity>0)return false;if(ex==='opened'&&!i.opened)return false;return true});
   const cats=CATK.filter(c=>S.pantry.some(i=>i.category===c));
   const expF=[['all','Tutti'],['soon','In scadenza'],['expired','Scaduti'],['low','Quasi finiti'],['out','Terminati'],['opened','Aperti']];
-  return `
-  <div class="row" style="justify-content:space-between"><div><h1 class="title">Dispensa</h1><p class="sub">${S.pantry.filter(i=>i.quantity>0).length} prodotti attivi</p></div>
-    <button class="btn pri" data-action="additem">${svg('plus',18)} Aggiungi</button></div>
+  return head+`
   <div class="fgroup" style="position:relative"><span style="position:absolute;left:13px;top:13px;color:rgb(var(--faint))">${svg('search',18)}</span>
     <input class="input" id="psearch" style="padding-left:40px" placeholder="Cerca un prodotto…" value="${esc(S.ui.pantryQ)}" oninput="onSearch(this.value)"></div>
   <div class="chips" style="margin-top:12px">${expF.map(([k,l])=>`<button class="chip ${ex===k?'on':''}" data-action="pexp" data-v="${k}">${l}</button>`).join('')}</div>
@@ -652,16 +676,17 @@ function vRecipes(){const list=S.recipes.map(r=>({r,sc:matchScore(r)})).sort((a,
 
 /* ---------- PLANNER ---------- */
 const MEAL_EMOJI={breakfast:'🍳',snack:'🍎',lunch:'🍝',snack2:'🥨',dinner:'🍽️'};
-function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=days.includes(S.ui.selDay)?S.ui.selDay:days[0];
+function plannerBody(){const off=S.ui.weekOff;const days=weekDays(off);const sel=days.includes(S.ui.selDay)?S.ui.selDay:days[0];
   const tk=todayKey();const t=targets(S.profile);const tgt=t.kcal;
   const dayMeals=m=>S.meals.filter(x=>x.date===sel&&x.meal===m);
   const selTot=S.meals.filter(x=>x.date===sel).reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
   const wk=S.meals.filter(m=>days.includes(m.date)).reduce((a,m)=>({kcal:a.kcal+(m.nutrition?.kcal||0),p:a.p+(m.nutrition?.protein||0),c:a.c+(m.nutrition?.carbs||0),f:a.f+(m.nutrition?.fat||0)}),{kcal:0,p:0,c:0,f:0});
   const dayName=new Date(sel).toLocaleDateString('it-IT',{weekday:'long'});
   const pctKcal=Math.min(100,tgt?Math.round(selTot.kcal/tgt*100):0);
-  return `<div class="row" style="justify-content:space-between"><div><h1 class="title">Planner</h1><p class="sub">Pianifica la settimana</p></div>
+  const hasPlan=S.meals.some(m=>days.includes(m.date));
+  return `<div class="row" style="justify-content:space-between;margin-top:22px"><b style="font-size:17px;font-weight:800">La settimana</b>
     <div class="row" style="gap:4px"><button class="iconbtn" data-action="week" data-v="-1">‹</button><button class="chip" data-action="week" data-v="0">Oggi</button><button class="iconbtn" data-action="week" data-v="1">›</button></div></div>
-  <div class="weekstrip" style="margin-top:14px">${days.map((d,i)=>{const kc=Math.round(S.meals.filter(m=>m.date===d).reduce((s,m)=>s+(m.nutrition?.kcal||0),0));const pc=Math.min(100,tgt?kc/tgt*100:0);const col=kc===0?'--surface2':pc>112?'--warning':'--brand';return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" ${d===sel?'id="planSel"':''} data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="height:3px;border-radius:9px;background:rgb(var(--surface2));margin-top:6px;overflow:hidden"><span style="display:block;height:100%;width:${pc}%;background:rgb(var(${col}))"></span></div></button>`}).join('')}</div>
+  <div class="weekstrip" style="margin-top:12px">${days.map((d,i)=>{const kc=Math.round(S.meals.filter(m=>m.date===d).reduce((s,m)=>s+(m.nutrition?.kcal||0),0));const pc=Math.min(100,tgt?kc/tgt*100:0);const col=kc===0?'--surface2':pc>112?'--warning':'--brand';return `<button class="day ${d===tk?'today':''} ${d===sel?'sel':''}" ${d===sel?'id="planSel"':''} data-action="selday" data-v="${d}"><div class="dn">${DOW[i]}</div><div class="dd tnum">${new Date(d).getDate()}</div><div style="height:3px;border-radius:9px;background:rgb(var(--surface2));margin-top:6px;overflow:hidden"><span style="display:block;height:100%;width:${pc}%;background:rgb(var(${col}))"></span></div></button>`}).join('')}</div>
 
   <div class="card" style="margin-top:16px;padding:16px">
     <div class="row" style="justify-content:space-between;align-items:flex-end">
@@ -686,7 +711,36 @@ function vPlanner(){const off=S.ui.weekOff;const days=weekDays(off);const sel=da
 }
 
 /* ---------- DIET ---------- */
-function vDiet(){const p=S.profile;const t=targets(p);
+// Piano tab = diet targets + weekly planner merged into one place.
+function vPiano(){const p=S.profile,t=targets(p);const open=S.ui.dietOpen;
+  const goalTxt={lose:'Dimagrimento',maintain:'Mantenimento',gain:'Aumento peso',muscle:'Massa muscolare'}[p.goal];
+  const adjTxt=t.adj<0?'deficit ~'+Math.abs(t.adj)+' kcal/g':t.adj>0?'surplus ~'+t.adj+' kcal/g':'mantenimento';
+  const r=30,c=2*Math.PI*r;
+  return `<div><h1 class="title">Piano</h1><p class="sub">La tua dieta e i pasti della settimana</p></div>
+  <div class="card" style="margin-top:16px;overflow:hidden"><div style="background:linear-gradient(135deg,rgb(var(--brand)/.16),transparent);padding:18px;display:flex;align-items:center;gap:16px">
+    <svg class="ring" width="82" height="82"><circle cx="41" cy="41" r="${r}" stroke="rgb(var(--surface2))" stroke-width="8" fill="none"/><circle cx="41" cy="41" r="${r}" stroke="rgb(var(--brand))" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0"/><text x="41" y="38" transform="rotate(90 41 41)" text-anchor="middle" fill="rgb(var(--fg))" font-size="17" font-weight="800">${t.kcal}</text><text x="41" y="53" transform="rotate(90 41 41)" text-anchor="middle" fill="rgb(var(--faint))" font-size="8">kcal/g</text></svg>
+    <div style="flex:1"><p style="font-weight:800">${goalTxt}</p><p class="hint" style="margin-top:3px">${adjTxt} · P ${t.protein} · C ${t.carbs} · G ${t.fat}${t.floored?'<br><b style="color:rgb(var(--warning))">Minimo di sicurezza '+t.floor+' kcal</b>':''}</p></div>
+  </div></div>
+  <div class="row" style="gap:8px;margin-top:12px"><button class="btn pri" style="flex:1" data-action="genplan">${svg('spark',18)} Genera piano + spesa</button><button class="btn sec" data-action="toggleDiet">${svg('user',18)} Dati${open?' ▴':' ▾'}</button></div>
+  ${open?vDietForm():''}
+  ${plannerBody()}`;
+}
+function vDietForm(){const p=S.profile;const pace=p.pace||'moderate';
+  const GOALS=[['lose','Dimagrire','📉'],['maintain','Mantenere','⚖️'],['gain','Aumentare','📈'],['muscle','Massa','💪']];
+  const ACTS=[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']];
+  const DIETS=[['none','Onnivora'],['vegetarian','Vegetariana'],['vegan','Vegana'],['mediterranean','Mediterranea'],['keto','Keto']];
+  const PACES=[['light','Lieve'],['moderate','Moderato'],['intense','Intenso']];
+  return `<div class="card" style="margin-top:12px;padding:16px">
+    <div class="chips" style="margin-bottom:14px">${[['female','Donna'],['male','Uomo']].map(([k,l])=>`<button class="chip ${p.sex===k?'on':''}" data-action="dsex" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="grid g3">${[['age','Età','anni'],['heightCm','Altezza','cm'],['weightKg','Peso','kg']].map(([k,l,u])=>`<div><label class="lab">${l}</label><input class="input" type="number" value="${p[k]}" onchange="dset('${k}',+this.value)" style="padding:10px"></div>`).join('')}</div>
+    <div class="fgroup"><label class="lab">Obiettivo</label><div class="loc3" style="grid-template-columns:1fr 1fr 1fr 1fr">${GOALS.map(([k,l,e])=>`<button class="loctile ${p.goal===k?'on':''}" data-action="dgoal" data-v="${k}"><span class="em">${e}</span>${l}</button>`).join('')}</div></div>
+    ${p.goal!=='maintain'?`<div class="fgroup"><label class="lab">${p.goal==='lose'?'Ritmo di dimagrimento':'Ritmo di crescita'}</label><div class="catgrid">${PACES.map(([k,l])=>`<button class="chip ${pace===k?'on':''}" data-action="dpace" data-v="${k}">${l} (${(PACE_ADJ[k][p.goal]>0?'+':'')}${PACE_ADJ[k][p.goal]})</button>`).join('')}</div></div>`:''}
+    <div class="fgroup"><label class="lab">Attività</label><div class="catgrid">${ACTS.map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-action="dact" data-v="${k}">${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Regime</label><div class="catgrid">${DIETS.map(([k,l])=>`<button class="chip ${p.diet===k?'on':''}" data-action="ddiet" data-v="${k}">${l}</button>`).join('')}</div></div>
+  </div>`;
+}
+// Legacy diet view — no longer routed (kept for reference).
+function _dietLegacy(){const p=S.profile;const t=targets(p);
   const goalTxt={lose:'Dimagrimento',maintain:'Mantenimento',gain:'Aumento peso',muscle:'Massa muscolare'}[p.goal];
   const adjTxt=t.adj<0?'deficit di ~'+Math.abs(t.adj)+' kcal/g':t.adj>0?'surplus di ~'+t.adj+' kcal/g':'calorie di mantenimento';
   const goalLine=`Obiettivo: <b style="color:rgb(var(--fg))">${goalTxt}</b> · ${adjTxt}. Fabbisogno di mantenimento ~${t.tdee} kcal/g → il piano distribuisce <b style="color:rgb(var(--fg))">${t.kcal} kcal/g</b> su 4 pasti bilanciati.${t.floored?' <b style="color:rgb(var(--warning))">Limite di sicurezza: non scendo sotto '+t.floor+' kcal.</b>':''}`;
@@ -804,7 +858,23 @@ function mealPicker(date,meal){const rs=S.recipes;
     <div class="row" style="gap:8px;margin-top:8px"><input class="input" id="custommeal" placeholder="Pasto libero (es. Insalata)"><button class="btn sec" data-action="addcustommeal" data-date="${date}" data-meal="${meal}">${svg('plus',18)}</button></div>`);
 }
 
-function moreSheet(){openSheet(`<h3>Altro</h3><div style="margin-top:8px">${[['fridge','fridge','Frigo virtuale'],['diet','user','Dieta personalizzata'],['stats','chart','Statistiche'],['assistant','spark','Assistente AI']].map(([t,ic,l])=>`<div class="more-item" data-action="nav" data-tab="${t}"><span class="mi">${svg(ic,20)}</span>${l}</div>`).join('')}<div class="more-item" data-action="resetdata"><span class="mi" style="color:rgb(var(--danger))">${svg('trash',20)}</span>Cancella tutti i dati</div></div><p style="text-align:center;font-size:11px;color:rgb(var(--faint));margin-top:16px">Cibo · dati salvati sul tuo dispositivo</p>`)}
+function moreSheet(){openSheet(`<h3>Menu</h3><div style="margin-top:8px">${[['assistant','spark','Assistente AI'],['stats','chart','Statistiche e sprechi'],['onboard','user','Rifai la configurazione']].map(([a,ic,l])=>`<div class="more-item" data-action="${a==='onboard'?'onboard':'nav'}" ${a==='onboard'?'':`data-tab="${a}"`}><span class="mi">${svg(ic,20)}</span>${l}</div>`).join('')}<div class="more-item" data-action="resetdata"><span class="mi" style="color:rgb(var(--danger))">${svg('trash',20)}</span>Cancella tutti i dati</div></div><p style="text-align:center;font-size:11px;color:rgb(var(--faint));margin-top:16px">Cibo · dati salvati sul tuo dispositivo</p>`)}
+function openOnboarding(){
+  const p=S.profile;
+  openSheet(`<h3>Benvenuta in Cibo 🍃</h3><p class="hint" style="margin-top:4px;margin-bottom:6px">Impostiamo il tuo obiettivo in 30 secondi: creo dieta, pasti della settimana e lista della spesa.</p>
+    <div class="fgroup"><label class="lab">Sei</label><div class="chips" id="o_sex">${[['female','Donna'],['male','Uomo']].map(([k,l])=>`<button class="chip ${p.sex===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
+    <div class="grid g3 fgroup">${[['age','Età',p.age],['heightCm','Altezza',p.heightCm],['weightKg','Peso',p.weightKg]].map(([k,l,v])=>`<div><label class="lab">${l}</label><input class="input" id="o_${k}" type="number" value="${v}" style="padding:10px"></div>`).join('')}</div>
+    <div class="fgroup"><label class="lab">Obiettivo</label><div class="loc3" style="grid-template-columns:1fr 1fr 1fr 1fr" id="o_goal">${[['lose','Dimagrire','📉'],['maintain','Mantenere','⚖️'],['gain','Aumentare','📈'],['muscle','Massa','💪']].map(([k,l,e])=>`<button class="loctile ${p.goal===k?'on':''}" data-pick="${k}"><span class="em">${e}</span>${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Ritmo</label><div class="chips" id="o_pace">${[['light','Lieve'],['moderate','Moderato'],['intense','Intenso']].map(([k,l])=>`<button class="chip ${(p.pace||'moderate')===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Attività</label><div class="catgrid" id="o_act">${[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']].map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
+    <div class="fgroup"><label class="lab">Regime</label><div class="catgrid" id="o_diet">${[['none','Onnivora'],['vegetarian','Vegetariana'],['vegan','Vegana'],['mediterranean','Mediterranea'],['keto','Keto']].map(([k,l])=>`<button class="chip ${(p.diet||'none')===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
+    <button class="btn pri block" style="margin-top:16px" data-action="saveonboard">✨ Crea il mio piano</button>
+    <button class="btn ghost block" style="margin-top:8px;background:none;border:none;color:rgb(var(--muted))" data-action="skiponboard">Salta per ora</button>`);
+  const pick={sex:p.sex,goal:p.goal,pace:p.pace||'moderate',activity:p.activity,diet:p.diet||'none'};
+  const wire=(id,key,cls)=>{const el=modroot.querySelector('#'+id);el.addEventListener('click',ev=>{const b=ev.target.closest('[data-pick]');if(!b)return;pick[key]=b.dataset.pick;el.querySelectorAll(cls).forEach(x=>x.classList.toggle('on',x===b))})};
+  wire('o_sex','sex','.chip');wire('o_goal','goal','.loctile');wire('o_pace','pace','.chip');wire('o_act','activity','.chip');wire('o_diet','diet','.chip');
+  modroot._onb=()=>({sex:pick.sex,age:+modroot.querySelector('#o_age').value||30,heightCm:+modroot.querySelector('#o_heightCm').value||170,weightKg:+modroot.querySelector('#o_weightKg').value||68,goal:pick.goal,pace:pick.pace,activity:pick.activity,diet:pick.diet});
+}
 
 function toast(msg){const old=document.querySelector('.toast');if(old)old.remove();const el=document.createElement('div');el.className='toast';el.innerHTML=`<span class="dot">${svg('check',16)}</span>${esc(msg)}`;document.body.appendChild(el);setTimeout(()=>el.remove(),2400)}
 
@@ -829,6 +899,11 @@ document.addEventListener('click',e=>{
     case'pexp':S.ui.pantryExp=el.dataset.v;persist();render();break;
     case'pcat':S.ui.pantryCat=el.dataset.v;persist();render();break;
     case'floc':S.ui.fridgeLoc=el.dataset.v;persist();render();break;
+    case'pview':S.ui.pantryView=el.dataset.v;persist();render();break;
+    case'toggleDiet':S.ui.dietOpen=!S.ui.dietOpen;persist();render();break;
+    case'onboard':openOnboarding();break;
+    case'saveonboard':{const o=modroot._onb();S.profile={...S.profile,...o};S.settings.onboarded=true;generateHealthyWeek();generateWeekShopping();persist();closeSheet();S.ui.tab='home';render();toast('Piano creato! Benvenuta 🍃');break}
+    case'skiponboard':S.settings.onboarded=true;persist();closeSheet();break;
     case'recipe':recipeSheet(S.recipes.find(r=>r.id===id));break;
     case'viewrecipe':{const r=S.recipes.find(x=>x.id===id);if(r)recipeSheet(r);break}
     case'genrecipe':genSheet();break;
@@ -869,4 +944,5 @@ window.onSearch=onSearch;window.addShopManual=addShopManual;window.ask=ask;windo
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(S.settings.theme==='system'){applyTheme();render()}});
 applyTheme();render();
+if(!S.settings.onboarded)openOnboarding();
 </script>
