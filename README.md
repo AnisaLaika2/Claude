@@ -52,6 +52,60 @@ npm run build      # genera la cartella dist/
 npm run preview    # anteprima della build
 ```
 
+## 📱 Usarla su iPhone (installazione come app)
+
+L'app è una **PWA**: si installa sulla schermata Home dell'iPhone, si apre a
+tutto schermo come un'app normale e funziona **offline**. I dati restano salvati
+solo sul telefono.
+
+Per usarla su iPhone servono due cose: pubblicarla una volta online (gratis, con
+GitHub Pages) e poi aggiungerla alla Home.
+
+### 1. Pubblicazione (una sola volta) con GitHub Pages
+
+Il repository include già il workflow `.github/workflows/deploy.yml` che compila
+e pubblica il sito ad ogni push. Devi solo attivare Pages:
+
+1. Vai su **GitHub → repository → Settings → Pages**.
+2. Alla voce **Build and deployment → Source** scegli **GitHub Actions**.
+3. Attendi che l'azione **"Deploy su GitHub Pages"** finisca (scheda *Actions*).
+
+Al termine l'app sarà raggiungibile a:
+
+```
+https://<tuo-utente>.github.io/<nome-repo>/
+```
+
+(per questo repository: `https://anisalaika2.github.io/Claude/`).
+
+> Nota privacy: su GitHub Pages viene pubblicato solo il **codice** dell'app. I
+> tuoi movimenti **non** vengono caricati da nessuna parte: restano nel database
+> locale del telefono.
+
+### 2. Aggiungere l'app alla schermata Home
+
+Sull'iPhone:
+
+1. Apri il link qui sopra con **Safari** (serve Safari, non Chrome).
+2. Tocca il pulsante **Condividi** (il quadrato con la freccia).
+3. Scegli **"Aggiungi alla schermata Home"** e conferma.
+
+Comparirà l'icona 👛 **Spese**: aprendola parte a schermo intero e funziona anche
+senza connessione.
+
+### Alternativa: dal tuo computer sulla stessa rete Wi-Fi
+
+Se preferisci non pubblicarla online, puoi avviarla dal computer e aprirla dal
+telefono (stessa rete Wi-Fi), tenendo il computer acceso:
+
+```bash
+npm run dev -- --host
+```
+
+Vite mostrerà un indirizzo tipo `http://192.168.1.50:5173`: aprilo in Safari
+sull'iPhone. In questa modalità l'app funziona solo con il computer acceso e la
+modalità offline non è disponibile (richiede HTTPS come su GitHub Pages).
+
 ## Come provare l'importazione
 
 Nella cartella [`samples/`](./samples) trovi due file di esempio:

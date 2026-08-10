@@ -41,7 +41,7 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+      <header className="safe-top sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
           <span className="text-2xl">👛</span>
           <h1 className="text-lg font-bold text-slate-800">Gestione Spese</h1>
@@ -77,7 +77,7 @@ export default function App() {
         {view === 'settings' && <Settings />}
       </main>
 
-      <footer className="px-4 py-6 text-center text-xs text-slate-400">
+      <footer className="safe-bottom px-4 py-6 text-center text-xs text-slate-400">
         Gestione Spese · Funziona completamente offline nel tuo browser
       </footer>
     </div>

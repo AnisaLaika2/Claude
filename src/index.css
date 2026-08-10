@@ -14,6 +14,24 @@ body,
 
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
+  /* Evita rimbalzi e migliora lo scroll su iOS in modalità standalone. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Rispetta le safe-area di iPhone (notch / barra inferiore) in modalità app. */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Su mobile i campi con testo < 16px provocano lo zoom automatico di iOS:
+   li portiamo a 16px per evitarlo. */
+@media (max-width: 640px) {
+  .input {
+    font-size: 16px;
+  }
 }
 
 @layer components {
