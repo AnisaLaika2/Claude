@@ -13,7 +13,8 @@ import {
 } from 'recharts';
 import { useData } from '../store/DataContext';
 import { StatCard, EmptyState } from '../components/ui';
-import { formatCurrency, formatMonthLabel, currentMonth } from '../lib/format';
+import { formatCurrency, formatMonthLabel, currentMonth, uid } from '../lib/format';
+import type { Account } from '../types';
 import {
   BUDGET_WARN_RATIO,
   budgetOverview,
@@ -27,7 +28,8 @@ import {
 import { notificationsEnabled, showNotification } from '../lib/notify';
 
 export default function Dashboard() {
-  const { transactions, categories, groups } = useData();
+  const { transactions, categories, groups, accounts, saveAccount, removeAccount } =
+    useData();
   const [month, setMonth] = useState(currentMonth());
 
   const monthTxs = useMemo(
@@ -76,10 +78,17 @@ export default function Dashboard() {
 
   if (transactions.length === 0) {
     return (
-      <EmptyState
-        title="Nessun movimento ancora registrato"
-        hint="Aggiungi una spesa dalla sezione Movimenti oppure importa il rendiconto della tua banca."
-      />
+      <div className="space-y-5">
+        <AccountsCard
+          accounts={accounts}
+          onSave={saveAccount}
+          onRemove={removeAccount}
+        />
+        <EmptyState
+          title="Nessun movimento ancora registrato"
+          hint="Aggiungi una spesa dalla sezione Movimenti oppure importa il rendiconto della tua banca."
+        />
+      </div>
     );
   }
 
@@ -101,6 +110,9 @@ export default function Dashboard() {
           ))}
         </select>
       </div>
+
+      {/* Saldo attuale in banca (impostato a mano) */}
+      <AccountsCard accounts={accounts} onSave={saveAccount} onRemove={removeAccount} />
 
       {/* Avvisi budget */}
       {alerts.length > 0 && (
@@ -284,6 +296,90 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AccountsCard({
+  accounts,
+  onSave,
+  onRemove,
+}: {
+  accounts: Account[];
+  onSave: (a: Account) => void;
+  onRemove: (id: string) => void;
+}) {
+  const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+
+  function add(name: string) {
+    onSave({ id: uid(), name, balance: 0 });
+  }
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-slate-700">Saldo attuale in banca</h3>
+        {accounts.length > 0 && (
+          <span
+            className={`text-2xl font-bold ${
+              total >= 0 ? 'text-slate-800' : 'text-red-600'
+            }`}
+          >
+            {formatCurrency(total)}
+          </span>
+        )}
+      </div>
+
+      {accounts.length === 0 ? (
+        <div className="mt-2">
+          <p className="mb-3 text-sm text-slate-500">
+            Inserisci il saldo reale dei tuoi conti/carte per avere il quadro
+            completo. Lo aggiorni tu quando vuoi (l’app non lo cambia da sola).
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary" onClick={() => add('Conto corrente')}>
+              + Conto corrente
+            </button>
+            <button className="btn-secondary" onClick={() => add('Carta prepagata')}>
+              + Carta prepagata
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {accounts.map((a) => (
+            <div key={a.id} className="flex items-center gap-2">
+              <input
+                className="input min-w-0 flex-1"
+                value={a.name}
+                onChange={(e) => onSave({ ...a, name: e.target.value })}
+                placeholder="Nome conto/carta"
+              />
+              <input
+                className="input w-32 text-right"
+                type="number"
+                step="0.01"
+                value={a.balance}
+                onChange={(e) => onSave({ ...a, balance: Number(e.target.value) || 0 })}
+              />
+              <span className="text-sm text-slate-400">€</span>
+              <button
+                className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
+                onClick={() => onRemove(a.id)}
+                title="Rimuovi"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            className="btn-ghost text-brand-700"
+            onClick={() => add('Nuovo conto')}
+          >
+            + Aggiungi conto
+          </button>
+        </div>
+      )}
     </div>
   );
 }

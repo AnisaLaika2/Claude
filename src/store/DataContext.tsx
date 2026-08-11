@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import type {
+  Account,
   Category,
   CategoryGroup,
   ImportProfile,
@@ -25,6 +26,7 @@ interface DataContextValue {
   transactions: Transaction[];
   categories: Category[];
   groups: CategoryGroup[];
+  accounts: Account[];
   rules: Rule[];
   recurring: Recurring[];
   profiles: ImportProfile[];
@@ -41,6 +43,10 @@ interface DataContextValue {
   // gruppi (macro-categorie)
   saveGroup: (g: CategoryGroup) => Promise<void>;
   removeGroup: (id: string) => Promise<void>;
+
+  // conti (saldi)
+  saveAccount: (a: Account) => Promise<void>;
+  removeAccount: (id: string) => Promise<void>;
 
   // regole
   saveRule: (r: Rule) => Promise<void>;
@@ -64,15 +70,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [profiles, setProfiles] = useState<ImportProfile[]>([]);
 
   async function reloadAll() {
-    const [txs, cats, grps, rls, recs, profs] = await Promise.all([
+    const [txs, cats, grps, accs, rls, recs, profs] = await Promise.all([
       db.getTransactions(),
       db.getCategories(),
       db.getGroups(),
+      db.getAccounts(),
       db.getRules(),
       db.getRecurring(),
       db.getProfiles(),
@@ -80,6 +88,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTransactions(txs);
     setCategories(cats);
     setGroups(grps);
+    setAccounts(accs);
     setRules(rls);
     setRecurring(recs);
     setProfiles(profs);
@@ -115,6 +124,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       transactions,
       categories,
       groups,
+      accounts,
       rules,
       recurring,
       profiles,
@@ -159,6 +169,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setCategories(await db.getCategories());
       },
 
+      saveAccount: async (a) => {
+        await db.putAccount(a);
+        setAccounts(await db.getAccounts());
+      },
+      removeAccount: async (id) => {
+        await db.deleteAccount(id);
+        setAccounts(await db.getAccounts());
+      },
+
       saveRule: async (r) => {
         await db.putRule(r);
         setRules(await db.getRules());
@@ -188,7 +207,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       reloadAll,
     }),
-    [loading, transactions, categories, groups, rules, recurring, profiles],
+    [loading, transactions, categories, groups, accounts, rules, recurring, profiles],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

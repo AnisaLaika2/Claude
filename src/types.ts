@@ -34,6 +34,14 @@ export interface Category {
   groupId?: string | null;
 }
 
+/** Conto/carta con il saldo attuale inserito manualmente dall'utente. */
+export interface Account {
+  id: string;
+  name: string;
+  /** saldo attuale in euro */
+  balance: number;
+}
+
 /** Macro-categoria: raggruppa più micro-categorie e porta il budget mensile. */
 export interface CategoryGroup {
   id: string;
