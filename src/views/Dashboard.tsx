@@ -23,7 +23,7 @@ import {
 } from '../lib/summary';
 
 export default function Dashboard() {
-  const { transactions, categories } = useData();
+  const { transactions, categories, groups } = useData();
   const [month, setMonth] = useState(currentMonth());
 
   const monthTxs = useMemo(
@@ -37,8 +37,8 @@ export default function Dashboard() {
   );
   const trend = useMemo(() => monthlyTrend(transactions, 6), [transactions]);
   const budgets = useMemo(
-    () => budgetStatus(monthTxs, categories),
-    [monthTxs, categories],
+    () => budgetStatus(monthTxs, categories, groups),
+    [monthTxs, categories, groups],
   );
 
   // Elenco dei mesi che contengono movimenti + mese corrente.
@@ -147,14 +147,14 @@ export default function Dashboard() {
               const over = b.ratio > 1;
               const pct = Math.min(b.ratio * 100, 100);
               return (
-                <div key={b.category.id}>
+                <div key={b.group.id}>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       <span
                         className="h-3 w-3 rounded-full"
-                        style={{ background: b.category.color }}
+                        style={{ background: b.group.color }}
                       />
-                      {b.category.name}
+                      {b.group.name}
                     </span>
                     <span className={over ? 'font-semibold text-red-600' : 'text-slate-500'}>
                       {formatCurrency(b.spent)} / {formatCurrency(b.budget)}

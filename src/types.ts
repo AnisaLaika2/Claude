@@ -28,7 +28,19 @@ export interface Category {
   name: string;
   color: string;
   type: TxType;
-  /** budget mensile (solo per le categorie di spesa), 0 = nessun budget */
+  /** budget mensile legacy (ora il budget è sul gruppo), 0 = nessuno */
+  budget: number;
+  /** macro-categoria (gruppo) di appartenenza, null se senza gruppo */
+  groupId?: string | null;
+}
+
+/** Macro-categoria: raggruppa più micro-categorie e porta il budget mensile. */
+export interface CategoryGroup {
+  id: string;
+  name: string;
+  color: string;
+  type: TxType;
+  /** budget mensile del gruppo (0 = nessuno) */
   budget: number;
 }
 

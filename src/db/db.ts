@@ -4,6 +4,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type {
   Category,
+  CategoryGroup,
   ImportProfile,
   Recurring,
   Rule,
@@ -14,13 +15,14 @@ import { uid } from '../lib/format';
 interface SpeseDB extends DBSchema {
   transactions: { key: string; value: Transaction; indexes: { byDate: string } };
   categories: { key: string; value: Category };
+  groups: { key: string; value: CategoryGroup };
   rules: { key: string; value: Rule };
   recurring: { key: string; value: Recurring };
   profiles: { key: string; value: ImportProfile };
 }
 
 const DB_NAME = 'gestione-spese';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<SpeseDB>> | null = null;
 
@@ -28,12 +30,26 @@ function getDB(): Promise<IDBPDatabase<SpeseDB>> {
   if (!dbPromise) {
     dbPromise = openDB<SpeseDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        const tx = db.createObjectStore('transactions', { keyPath: 'id' });
-        tx.createIndex('byDate', 'date');
-        db.createObjectStore('categories', { keyPath: 'id' });
-        db.createObjectStore('rules', { keyPath: 'id' });
-        db.createObjectStore('recurring', { keyPath: 'id' });
-        db.createObjectStore('profiles', { keyPath: 'id' });
+        // Idempotente: crea solo gli store mancanti (nuovi utenti o upgrade).
+        if (!db.objectStoreNames.contains('transactions')) {
+          const tx = db.createObjectStore('transactions', { keyPath: 'id' });
+          tx.createIndex('byDate', 'date');
+        }
+        if (!db.objectStoreNames.contains('categories')) {
+          db.createObjectStore('categories', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('groups')) {
+          db.createObjectStore('groups', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('rules')) {
+          db.createObjectStore('rules', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('recurring')) {
+          db.createObjectStore('recurring', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('profiles')) {
+          db.createObjectStore('profiles', { keyPath: 'id' });
+        }
       },
     });
   }
@@ -64,6 +80,36 @@ export async function ensureSeed(): Promise<void> {
     }
     await tx.done;
   }
+}
+
+/**
+ * Migrazione una-tantum: se non esistono ancora gruppi ma alcune categorie
+ * hanno un budget, crea un gruppo (macro-categoria) per ciascuna e vi sposta la
+ * categoria, spostando il budget sul gruppo. Così i budget esistenti non si
+ * perdono e l'utente ha già delle macro-categorie di partenza.
+ */
+export async function ensureGroupsMigration(): Promise<void> {
+  const db = await getDB();
+  const groupCount = await db.count('groups');
+  if (groupCount > 0) return;
+
+  const categories = await db.getAll('categories');
+  const budgeted = categories.filter((c) => c.type === 'expense' && c.budget > 0);
+  if (budgeted.length === 0) return;
+
+  const tx = db.transaction(['groups', 'categories'], 'readwrite');
+  for (const c of budgeted) {
+    const groupId = uid();
+    await tx.objectStore('groups').put({
+      id: groupId,
+      name: c.name,
+      color: c.color,
+      type: 'expense',
+      budget: c.budget,
+    });
+    await tx.objectStore('categories').put({ ...c, groupId, budget: 0 });
+  }
+  await tx.done;
 }
 
 // ---- Transazioni ----
@@ -102,6 +148,29 @@ export async function putCategory(c: Category): Promise<void> {
 export async function deleteCategory(id: string): Promise<void> {
   const db = await getDB();
   await db.delete('categories', id);
+}
+
+// ---- Gruppi (macro-categorie) ----
+export async function getGroups(): Promise<CategoryGroup[]> {
+  const db = await getDB();
+  return db.getAll('groups');
+}
+export async function putGroup(g: CategoryGroup): Promise<void> {
+  const db = await getDB();
+  await db.put('groups', g);
+}
+/** Elimina un gruppo e stacca le categorie che vi appartenevano. */
+export async function deleteGroup(id: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['groups', 'categories'], 'readwrite');
+  await tx.objectStore('groups').delete(id);
+  const cats = await tx.objectStore('categories').getAll();
+  for (const c of cats) {
+    if (c.groupId === id) {
+      await tx.objectStore('categories').put({ ...c, groupId: null });
+    }
+  }
+  await tx.done;
 }
 
 // ---- Regole ----
@@ -152,16 +221,18 @@ export interface BackupData {
   exportedAt: string;
   transactions: Transaction[];
   categories: Category[];
+  groups?: CategoryGroup[];
   rules: Rule[];
   recurring: Recurring[];
   profiles: ImportProfile[];
 }
 
 export async function exportAll(): Promise<BackupData> {
-  const [transactions, categories, rules, recurring, profiles] =
+  const [transactions, categories, groups, rules, recurring, profiles] =
     await Promise.all([
       getTransactions(),
       getCategories(),
+      getGroups(),
       getRules(),
       getRecurring(),
       getProfiles(),
@@ -171,6 +242,7 @@ export async function exportAll(): Promise<BackupData> {
     exportedAt: new Date().toISOString(),
     transactions,
     categories,
+    groups,
     rules,
     recurring,
     profiles,
@@ -179,11 +251,12 @@ export async function exportAll(): Promise<BackupData> {
 
 export async function importAll(data: BackupData): Promise<void> {
   const db = await getDB();
-  const stores = ['transactions', 'categories', 'rules', 'recurring', 'profiles'] as const;
+  const stores = ['transactions', 'categories', 'groups', 'rules', 'recurring', 'profiles'] as const;
   const tx = db.transaction(stores, 'readwrite');
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
   for (const t of data.transactions ?? []) await tx.objectStore('transactions').put(t);
   for (const c of data.categories ?? []) await tx.objectStore('categories').put(c);
+  for (const g of data.groups ?? []) await tx.objectStore('groups').put(g);
   for (const r of data.rules ?? []) await tx.objectStore('rules').put(r);
   for (const r of data.recurring ?? []) await tx.objectStore('recurring').put(r);
   for (const p of data.profiles ?? []) await tx.objectStore('profiles').put(p);

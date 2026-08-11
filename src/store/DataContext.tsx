@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type {
   Category,
+  CategoryGroup,
   ImportProfile,
   Recurring,
   Rule,
@@ -23,6 +24,7 @@ interface DataContextValue {
   loading: boolean;
   transactions: Transaction[];
   categories: Category[];
+  groups: CategoryGroup[];
   rules: Rule[];
   recurring: Recurring[];
   profiles: ImportProfile[];
@@ -35,6 +37,10 @@ interface DataContextValue {
   // categorie
   saveCategory: (c: Category) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
+
+  // gruppi (macro-categorie)
+  saveGroup: (g: CategoryGroup) => Promise<void>;
+  removeGroup: (id: string) => Promise<void>;
 
   // regole
   saveRule: (r: Rule) => Promise<void>;
@@ -57,20 +63,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [recurring, setRecurring] = useState<Recurring[]>([]);
   const [profiles, setProfiles] = useState<ImportProfile[]>([]);
 
   async function reloadAll() {
-    const [txs, cats, rls, recs, profs] = await Promise.all([
+    const [txs, cats, grps, rls, recs, profs] = await Promise.all([
       db.getTransactions(),
       db.getCategories(),
+      db.getGroups(),
       db.getRules(),
       db.getRecurring(),
       db.getProfiles(),
     ]);
     setTransactions(txs);
     setCategories(cats);
+    setGroups(grps);
     setRules(rls);
     setRecurring(recs);
     setProfiles(profs);
@@ -78,19 +87,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      await db.ensureSeed();
-      await reloadAll();
-
-      // Genera automaticamente i movimenti ricorrenti dovuti.
-      const recs = await db.getRecurring();
-      const { transactions: newTx, updated } = generateDueTransactions(recs);
-      if (newTx.length) {
-        await db.bulkPutTransactions(newTx);
-        for (const r of updated) await db.putRecurring(r);
+      try {
+        await db.ensureSeed();
+        await db.ensureGroupsMigration();
         await reloadAll();
-      }
 
-      setLoading(false);
+        // Genera automaticamente i movimenti ricorrenti dovuti.
+        const recs = await db.getRecurring();
+        const { transactions: newTx, updated } = generateDueTransactions(recs);
+        if (newTx.length) {
+          await db.bulkPutTransactions(newTx);
+          for (const r of updated) await db.putRecurring(r);
+          await reloadAll();
+        }
+      } catch (err) {
+        // Non lasciare l'app bloccata sul caricamento in caso di errore.
+        console.error('Errore inizializzazione dati:', err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -99,6 +114,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       loading,
       transactions,
       categories,
+      groups,
       rules,
       recurring,
       profiles,
@@ -132,6 +148,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setCategories(await db.getCategories());
       },
 
+      saveGroup: async (g) => {
+        await db.putGroup(g);
+        setGroups(await db.getGroups());
+      },
+      removeGroup: async (id) => {
+        await db.deleteGroup(id);
+        // deleteGroup stacca le categorie: ricarico entrambi.
+        setGroups(await db.getGroups());
+        setCategories(await db.getCategories());
+      },
+
       saveRule: async (r) => {
         await db.putRule(r);
         setRules(await db.getRules());
@@ -161,7 +188,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       reloadAll,
     }),
-    [loading, transactions, categories, rules, recurring, profiles],
+    [loading, transactions, categories, groups, rules, recurring, profiles],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

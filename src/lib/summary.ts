@@ -1,6 +1,6 @@
 // Funzioni di aggregazione per dashboard e report.
 
-import type { Category, Transaction } from '../types';
+import type { Category, CategoryGroup, Transaction } from '../types';
 
 /** Esclude i giroconti (ricariche carta ecc.) dai conteggi. */
 export function countable(txs: Transaction[]): Transaction[] {
@@ -83,30 +83,42 @@ export function monthlyTrend(txs: Transaction[], months: number): MonthPoint[] {
 }
 
 export interface BudgetStatus {
-  category: Category;
+  group: CategoryGroup;
   spent: number;
   budget: number;
   ratio: number;
 }
 
+/**
+ * Budget per macro-categoria (gruppo): somma le spese di tutte le micro-categorie
+ * del gruppo e le confronta con il budget del gruppo.
+ */
 export function budgetStatus(
   monthTxs: Transaction[],
   categories: Category[],
+  groups: CategoryGroup[],
 ): BudgetStatus[] {
-  const spentByCat = new Map<string, number>();
+  // Mappa categoria -> gruppo di appartenenza.
+  const groupOfCat = new Map<string, string>();
+  for (const c of categories) if (c.groupId) groupOfCat.set(c.id, c.groupId);
+
+  const spentByGroup = new Map<string, number>();
   for (const t of countable(monthTxs)) {
     if (t.type !== 'expense' || !t.categoryId) continue;
-    spentByCat.set(t.categoryId, (spentByCat.get(t.categoryId) ?? 0) + t.amount);
+    const gId = groupOfCat.get(t.categoryId);
+    if (!gId) continue;
+    spentByGroup.set(gId, (spentByGroup.get(gId) ?? 0) + t.amount);
   }
-  return categories
-    .filter((c) => c.type === 'expense' && c.budget > 0)
-    .map((category) => {
-      const spent = spentByCat.get(category.id) ?? 0;
+
+  return groups
+    .filter((g) => g.type === 'expense' && g.budget > 0)
+    .map((group) => {
+      const spent = spentByGroup.get(group.id) ?? 0;
       return {
-        category,
+        group,
         spent,
-        budget: category.budget,
-        ratio: category.budget ? spent / category.budget : 0,
+        budget: group.budget,
+        ratio: group.budget ? spent / group.budget : 0,
       };
     })
     .sort((a, b) => b.ratio - a.ratio);

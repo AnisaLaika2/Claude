@@ -1,37 +1,62 @@
 import { useState } from 'react';
 import { useData } from '../store/DataContext';
-import type { Category, TxType } from '../types';
-import { formatCurrency, uid } from '../lib/format';
+import { EmptyState } from '../components/ui';
+import type { Category, CategoryGroup, TxType } from '../types';
+import { uid } from '../lib/format';
 
 const PALETTE = [
   '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7',
   '#ec4899', '#14b8a6', '#f97316', '#10b981', '#06b6d4',
   '#6366f1', '#84cc16', '#eab308', '#f43f5e', '#8b5cf6',
 ];
+const randomColor = () => PALETTE[Math.floor(Math.random() * PALETTE.length)];
 
 export default function Categories() {
-  const { categories, saveCategory, removeCategory, transactions } = useData();
-  const [name, setName] = useState('');
-  const [type, setType] = useState<TxType>('expense');
-  const [color, setColor] = useState(PALETTE[0]);
+  const {
+    categories,
+    groups,
+    saveCategory,
+    removeCategory,
+    saveGroup,
+    removeGroup,
+    transactions,
+  } = useData();
 
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatType, setNewCatType] = useState<TxType>('expense');
+  const [newGroupName, setNewGroupName] = useState('');
+
+  const expenseGroups = groups.filter((g) => g.type === 'expense');
   const expenseCats = categories.filter((c) => c.type === 'expense');
   const incomeCats = categories.filter((c) => c.type === 'income');
+  const ungrouped = expenseCats.filter((c) => !c.groupId);
 
-  function add() {
-    if (!name.trim()) return;
+  function addCategory() {
+    if (!newCatName.trim()) return;
     saveCategory({
       id: uid(),
-      name: name.trim(),
-      color,
-      type,
+      name: newCatName.trim(),
+      color: randomColor(),
+      type: newCatType,
       budget: 0,
+      groupId: null,
     });
-    setName('');
-    setColor(PALETTE[Math.floor(Math.random() * PALETTE.length)]);
+    setNewCatName('');
   }
 
-  function onDelete(c: Category) {
+  function addGroup() {
+    if (!newGroupName.trim()) return;
+    saveGroup({
+      id: uid(),
+      name: newGroupName.trim(),
+      color: randomColor(),
+      type: 'expense',
+      budget: 0,
+    });
+    setNewGroupName('');
+  }
+
+  function onDeleteCategory(c: Category) {
     const used = transactions.some((t) => t.categoryId === c.id);
     const msg = used
       ? `La categoria "${c.name}" è usata da alcuni movimenti, che resteranno senza categoria. Eliminare comunque?`
@@ -40,122 +65,273 @@ export default function Categories() {
   }
 
   return (
-    <div className="space-y-5">
-      <h2 className="text-xl font-semibold text-slate-800">Categorie & Budget</h2>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-slate-800">Categorie & Budget</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Raggruppa le categorie in <strong>macro-categorie</strong> e imposta il
+          <strong> budget mensile sul gruppo</strong>. Esempio: metti “Generi alimentari”,
+          “Ristoranti” e “Bar” nel gruppo <em>Cibo</em> e dai un budget al gruppo.
+        </p>
+      </div>
 
-      <div className="card p-4">
-        <h3 className="mb-3 font-semibold text-slate-700">Nuova categoria</h3>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[180px] flex-1">
-            <label className="label">Nome</label>
+      {/* Aggiunte rapide */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="card p-4">
+          <h3 className="mb-2 font-semibold text-slate-700">Nuovo gruppo (macro)</h3>
+          <div className="flex gap-2">
             <input
               className="input"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && add()}
+              placeholder="Es. Cibo, Casa, Trasporti…"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addGroup()}
             />
+            <button className="btn-primary whitespace-nowrap" onClick={addGroup}>
+              + Gruppo
+            </button>
           </div>
-          <div>
-            <label className="label">Tipo</label>
+        </div>
+
+        <div className="card p-4">
+          <h3 className="mb-2 font-semibold text-slate-700">Nuova categoria</h3>
+          <div className="flex flex-wrap gap-2">
+            <input
+              className="input flex-1"
+              placeholder="Nome categoria"
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+            />
             <select
-              className="input"
-              value={type}
-              onChange={(e) => setType(e.target.value as TxType)}
+              className="input w-auto"
+              value={newCatType}
+              onChange={(e) => setNewCatType(e.target.value as TxType)}
             >
               <option value="expense">Spesa</option>
               <option value="income">Entrata</option>
             </select>
+            <button className="btn-secondary whitespace-nowrap" onClick={addCategory}>
+              + Categoria
+            </button>
           </div>
-          <div>
-            <label className="label">Colore</label>
-            <div className="flex flex-wrap gap-1">
-              {PALETTE.map((c) => (
-                <button
-                  key={c}
-                  className={`h-7 w-7 rounded-full ${color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`}
-                  style={{ background: c }}
-                  onClick={() => setColor(c)}
-                  aria-label={c}
-                />
-              ))}
-            </div>
-          </div>
-          <button className="btn-primary" onClick={add}>
-            + Aggiungi
-          </button>
         </div>
       </div>
 
-      <CategoryTable
-        title="Categorie di spesa (con budget mensile)"
-        cats={expenseCats}
-        showBudget
-        onSave={saveCategory}
-        onDelete={onDelete}
-      />
-      <CategoryTable
-        title="Categorie di entrata"
-        cats={incomeCats}
-        showBudget={false}
-        onSave={saveCategory}
-        onDelete={onDelete}
-      />
+      {/* Gruppi con budget */}
+      <div>
+        <h3 className="mb-2 font-semibold text-slate-700">Gruppi di spesa e budget</h3>
+        {expenseGroups.length === 0 ? (
+          <EmptyState
+            title="Nessun gruppo ancora."
+            hint="Crea un gruppo qui sopra, poi trascina dentro le categorie e imposta il budget."
+          />
+        ) : (
+          <div className="space-y-3">
+            {expenseGroups.map((g) => (
+              <GroupCard
+                key={g.id}
+                group={g}
+                members={expenseCats.filter((c) => c.groupId === g.id)}
+                ungrouped={ungrouped}
+                onSaveGroup={saveGroup}
+                onDeleteGroup={() =>
+                  window.confirm(
+                    `Eliminare il gruppo "${g.name}"? Le categorie al suo interno restano, ma senza gruppo e senza budget.`,
+                  ) && removeGroup(g.id)
+                }
+                onSaveCategory={saveCategory}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Categorie di spesa senza gruppo */}
+      {ungrouped.length > 0 && (
+        <div>
+          <h3 className="mb-2 font-semibold text-slate-700">
+            Categorie di spesa senza gruppo
+          </h3>
+          <div className="card divide-y divide-slate-100">
+            {ungrouped.map((c) => (
+              <CategoryRow
+                key={c.id}
+                category={c}
+                groups={expenseGroups}
+                onSave={saveCategory}
+                onDelete={() => onDeleteCategory(c)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Entrate */}
+      {incomeCats.length > 0 && (
+        <div>
+          <h3 className="mb-2 font-semibold text-slate-700">Categorie di entrata</h3>
+          <div className="card divide-y divide-slate-100">
+            {incomeCats.map((c) => (
+              <CategoryRow
+                key={c.id}
+                category={c}
+                groups={[]}
+                onSave={saveCategory}
+                onDelete={() => onDeleteCategory(c)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CategoryTable({
-  title,
-  cats,
-  showBudget,
+function GroupCard({
+  group,
+  members,
+  ungrouped,
+  onSaveGroup,
+  onDeleteGroup,
+  onSaveCategory,
+}: {
+  group: CategoryGroup;
+  members: Category[];
+  ungrouped: Category[];
+  onSaveGroup: (g: CategoryGroup) => void;
+  onDeleteGroup: () => void;
+  onSaveCategory: (c: Category) => void;
+}) {
+  return (
+    <div className="card p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="color"
+          className="h-8 w-8 cursor-pointer rounded border border-slate-200 bg-white"
+          value={group.color}
+          onChange={(e) => onSaveGroup({ ...group, color: e.target.value })}
+          title="Colore del gruppo"
+        />
+        <input
+          className="input max-w-[220px] flex-1 font-medium"
+          value={group.name}
+          onChange={(e) => onSaveGroup({ ...group, name: e.target.value })}
+        />
+        <label className="flex items-center gap-2 text-sm text-slate-500">
+          Budget:
+          <input
+            className="input w-28"
+            type="number"
+            min="0"
+            step="10"
+            placeholder="0"
+            value={group.budget || ''}
+            onChange={(e) => onSaveGroup({ ...group, budget: Number(e.target.value) || 0 })}
+          />
+          <span className="text-xs text-slate-400">€/mese</span>
+        </label>
+        <button
+          className="btn-ghost ml-auto !px-2 !py-1 text-red-500"
+          onClick={onDeleteGroup}
+          title="Elimina gruppo"
+        >
+          🗑️
+        </button>
+      </div>
+
+      {/* Micro-categorie del gruppo */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {members.length === 0 && (
+          <span className="text-xs text-slate-400">
+            Nessuna categoria in questo gruppo.
+          </span>
+        )}
+        {members.map((c) => (
+          <span
+            key={c.id}
+            className="badge bg-slate-100 text-slate-700"
+            style={{ borderLeft: `3px solid ${c.color}` }}
+          >
+            {c.name}
+            <button
+              className="ml-1 text-slate-400 hover:text-red-500"
+              onClick={() => onSaveCategory({ ...c, groupId: null })}
+              title="Togli dal gruppo"
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+
+        {ungrouped.length > 0 && (
+          <select
+            className="input !w-auto !py-1 !text-xs"
+            value=""
+            onChange={(e) => {
+              const cat = ungrouped.find((c) => c.id === e.target.value);
+              if (cat) onSaveCategory({ ...cat, groupId: group.id });
+            }}
+          >
+            <option value="">+ Aggiungi categoria…</option>
+            {ungrouped.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CategoryRow({
+  category,
+  groups,
   onSave,
   onDelete,
 }: {
-  title: string;
-  cats: Category[];
-  showBudget: boolean;
+  category: Category;
+  groups: CategoryGroup[];
   onSave: (c: Category) => void;
-  onDelete: (c: Category) => void;
+  onDelete: () => void;
 }) {
-  if (cats.length === 0) return null;
   return (
-    <div className="card p-4">
-      <h3 className="mb-3 font-semibold text-slate-700">{title}</h3>
-      <div className="space-y-2">
-        {cats.map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center gap-3">
-            <span className="h-4 w-4 rounded-full" style={{ background: c.color }} />
-            <input
-              className="input max-w-[220px]"
-              value={c.name}
-              onChange={(e) => onSave({ ...c, name: e.target.value })}
-            />
-            {showBudget && (
-              <label className="flex items-center gap-2 text-sm text-slate-500">
-                Budget:
-                <input
-                  className="input w-32"
-                  type="number"
-                  min="0"
-                  step="10"
-                  value={c.budget || ''}
-                  placeholder="0"
-                  onChange={(e) => onSave({ ...c, budget: Number(e.target.value) || 0 })}
-                />
-                <span className="text-xs text-slate-400">
-                  {c.budget ? `(${formatCurrency(c.budget)}/mese)` : 'nessuno'}
-                </span>
-              </label>
-            )}
-            <button
-              className="btn-ghost ml-auto !px-2 !py-1 text-red-500"
-              onClick={() => onDelete(c)}
-            >
-              🗑️
-            </button>
-          </div>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center gap-3 p-3">
+      <input
+        type="color"
+        className="h-7 w-7 cursor-pointer rounded border border-slate-200 bg-white"
+        value={category.color}
+        onChange={(e) => onSave({ ...category, color: e.target.value })}
+        title="Colore"
+      />
+      <input
+        className="input max-w-[220px] flex-1"
+        value={category.name}
+        onChange={(e) => onSave({ ...category, name: e.target.value })}
+      />
+      {groups.length > 0 && (
+        <select
+          className="input w-auto text-sm"
+          value={category.groupId ?? ''}
+          onChange={(e) => onSave({ ...category, groupId: e.target.value || null })}
+        >
+          <option value="">— nessun gruppo —</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        className="btn-ghost ml-auto !px-2 !py-1 text-red-500"
+        onClick={onDelete}
+        title="Elimina categoria"
+      >
+        🗑️
+      </button>
     </div>
   );
 }
