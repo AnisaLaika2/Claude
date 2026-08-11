@@ -86,7 +86,12 @@ export function parseAmount(raw: string, decimalSeparator: ',' | '.'): number | 
   // Sigle valuta testuali a fine stringa (EUR, USD…)
   value = value.replace(/(eur|usd|gbp|chf)$/i, '');
 
-  // Gestione del segno e delle parentesi per i negativi, es. (150,00).
+  // Normalizza i vari caratteri "meno" usati dalle banche (segno matematico −,
+  // trattini lunghi, meno a tutta larghezza) nel trattino ASCII.
+  value = value.replace(/[−‒–—﹣－]/g, '-');
+
+  // Gestione del segno per i negativi: parentesi (150,00), meno iniziale -150,00
+  // oppure meno finale 150,00- (usato da alcuni estratti conto).
   let negative = false;
   if (/^\(.*\)$/.test(value)) {
     negative = true;
@@ -95,6 +100,9 @@ export function parseAmount(raw: string, decimalSeparator: ',' | '.'): number | 
   if (value.startsWith('-')) {
     negative = true;
     value = value.slice(1);
+  } else if (value.endsWith('-')) {
+    negative = true;
+    value = value.slice(0, -1);
   } else if (value.startsWith('+')) {
     value = value.slice(1);
   }
