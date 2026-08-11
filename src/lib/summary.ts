@@ -55,6 +55,48 @@ export function expenseByCategory(
   return slices.sort((a, b) => b.value - a.value);
 }
 
+export interface GroupSlice {
+  id: string;
+  name: string;
+  color: string;
+  value: number;
+}
+
+/** Spese del periodo raggruppate per macro-categoria (gruppo). */
+export function expenseByGroup(
+  txs: Transaction[],
+  categories: Category[],
+  groups: CategoryGroup[],
+): GroupSlice[] {
+  const groupOfCat = new Map<string, string>();
+  for (const c of categories) if (c.groupId) groupOfCat.set(c.id, c.groupId);
+
+  const byGroup = new Map<string, number>();
+  let senzaGruppo = 0;
+  for (const t of countable(txs)) {
+    if (t.type !== 'expense') continue;
+    const gId = t.categoryId ? groupOfCat.get(t.categoryId) : undefined;
+    if (gId) byGroup.set(gId, (byGroup.get(gId) ?? 0) + t.amount);
+    else senzaGruppo += t.amount;
+  }
+
+  const byId = new Map(groups.map((g) => [g.id, g]));
+  const slices: GroupSlice[] = [];
+  for (const [gId, value] of byGroup) {
+    const g = byId.get(gId);
+    slices.push({
+      id: gId,
+      name: g?.name ?? 'Gruppo',
+      color: g?.color ?? '#94a3b8',
+      value,
+    });
+  }
+  if (senzaGruppo > 0) {
+    slices.push({ id: '__none__', name: 'Senza gruppo', color: '#cbd5e1', value: senzaGruppo });
+  }
+  return slices.sort((a, b) => b.value - a.value);
+}
+
 export interface MonthPoint {
   month: string; // yyyy-mm
   income: number;
@@ -123,3 +165,18 @@ export function budgetStatus(
     })
     .sort((a, b) => b.ratio - a.ratio);
 }
+
+/** Totali complessivi del budget del mese (pianificato / speso / rimanente). */
+export function budgetOverview(status: BudgetStatus[]): {
+  budget: number;
+  spent: number;
+  remaining: number;
+  ratio: number;
+} {
+  const budget = status.reduce((s, b) => s + b.budget, 0);
+  const spent = status.reduce((s, b) => s + b.spent, 0);
+  return { budget, spent, remaining: budget - spent, ratio: budget ? spent / budget : 0 };
+}
+
+/** Soglia oltre la quale si avvisa che ci si sta avvicinando al budget. */
+export const BUDGET_WARN_RATIO = 0.8;

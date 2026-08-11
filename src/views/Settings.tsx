@@ -2,12 +2,36 @@ import { useRef, useState } from 'react';
 import { useData } from '../store/DataContext';
 import { exportAll, importAll, clearTransactions, type BackupData } from '../db/db';
 import { formatCurrency } from '../lib/format';
+import {
+  notificationsSupported,
+  notificationsEnabled,
+  setNotificationsEnabled,
+  requestNotificationPermission,
+} from '../lib/notify';
 import Papa from 'papaparse';
 
 export default function Settings() {
   const { transactions, categories, reloadAll } = useData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
+  const [notif, setNotif] = useState(notificationsEnabled());
+
+  async function toggleNotifications(on: boolean) {
+    if (on) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        setMsg(
+          'Permesso notifiche non concesso. Su iPhone aggiungi prima l’app alla schermata Home, poi consenti le notifiche.',
+        );
+        setNotif(false);
+        setNotificationsEnabled(false);
+        return;
+      }
+    }
+    setNotif(on);
+    setNotificationsEnabled(on);
+    setMsg(on ? 'Notifiche budget attivate.' : 'Notifiche budget disattivate.');
+  }
 
   async function downloadBackup() {
     const data = await exportAll();
@@ -89,6 +113,29 @@ export default function Settings() {
           {msg}
         </div>
       )}
+
+      <div className="card p-4">
+        <h3 className="mb-2 font-semibold text-slate-700">Notifiche budget</h3>
+        <p className="mb-3 text-sm text-slate-600">
+          Ricevi un avviso quando ti stai avvicinando (80%) o hai superato il budget
+          di un gruppo. Gli avvisi appaiono comunque nel Riepilogo.
+        </p>
+        {notificationsSupported() ? (
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={notif}
+              onChange={(e) => toggleNotifications(e.target.checked)}
+            />
+            Attiva le notifiche di budget
+          </label>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Questo dispositivo non supporta le notifiche del browser. Su iPhone
+            funzionano solo con l’app aggiunta alla schermata Home.
+          </p>
+        )}
+      </div>
 
       <div className="card p-4">
         <h3 className="mb-2 font-semibold text-slate-700">Riepilogo dati</h3>

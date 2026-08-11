@@ -205,40 +205,44 @@ function GroupCard({
 }) {
   return (
     <div className="card p-4">
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Riga 1: colore + nome (largo e leggibile) + elimina */}
+      <div className="flex items-center gap-2">
         <input
           type="color"
-          className="h-8 w-8 cursor-pointer rounded border border-slate-200 bg-white"
+          className="h-9 w-9 shrink-0 cursor-pointer rounded border border-slate-200 bg-white"
           value={group.color}
           onChange={(e) => onSaveGroup({ ...group, color: e.target.value })}
           title="Colore del gruppo"
         />
         <input
-          className="input max-w-[220px] flex-1 font-medium"
+          className="input min-w-0 flex-1 font-semibold"
           value={group.name}
           onChange={(e) => onSaveGroup({ ...group, name: e.target.value })}
+          placeholder="Nome gruppo"
         />
-        <label className="flex items-center gap-2 text-sm text-slate-500">
-          Budget:
-          <input
-            className="input w-28"
-            type="number"
-            min="0"
-            step="10"
-            placeholder="0"
-            value={group.budget || ''}
-            onChange={(e) => onSaveGroup({ ...group, budget: Number(e.target.value) || 0 })}
-          />
-          <span className="text-xs text-slate-400">€/mese</span>
-        </label>
         <button
-          className="btn-ghost ml-auto !px-2 !py-1 text-red-500"
+          className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
           onClick={onDeleteGroup}
           title="Elimina gruppo"
         >
           🗑️
         </button>
       </div>
+
+      {/* Riga 2: budget */}
+      <label className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+        <span className="w-16">Budget</span>
+        <input
+          className="input w-32"
+          type="number"
+          min="0"
+          step="10"
+          placeholder="0"
+          value={group.budget || ''}
+          onChange={(e) => onSaveGroup({ ...group, budget: Number(e.target.value) || 0 })}
+        />
+        <span className="text-xs text-slate-400">€ / mese</span>
+      </label>
 
       {/* Micro-categorie del gruppo */}
       <div className="mt-3 flex flex-wrap items-center gap-2">

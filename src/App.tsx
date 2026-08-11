@@ -19,9 +19,9 @@ type View =
 
 const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Riepilogo', icon: '📊' },
+  { id: 'categories', label: 'Categorie & Budget', icon: '🏷️' },
   { id: 'transactions', label: 'Movimenti', icon: '💳' },
   { id: 'import', label: 'Importa', icon: '📥' },
-  { id: 'categories', label: 'Categorie & Budget', icon: '🏷️' },
   { id: 'rules', label: 'Regole', icon: '⚙️' },
   { id: 'recurring', label: 'Ricorrenti', icon: '🔁' },
   { id: 'settings', label: 'Backup', icon: '💾' },
