@@ -46,6 +46,9 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
   });
   const [staged, setStaged] = useState<StagedTransaction[]>([]);
   const [saveProfileName, setSaveProfileName] = useState('');
+  // Origine dei movimenti (Conto o Carta): salvata come metodo di pagamento,
+  // senza importare il numero di conto/carta.
+  const [origin, setOrigin] = useState('Conto corrente');
 
   const existingHashes = useMemo(
     () => new Set(transactions.map((t) => t.dedupHash).filter(Boolean) as string[]),
@@ -188,7 +191,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       type: s.type,
       description: s.description,
       categoryId: s.categoryId,
-      paymentMethod: 'Banca',
+      paymentMethod: origin.trim() || 'Banca',
       notes: '',
       source: 'import',
       dedupHash: s.dedupHash,
@@ -247,6 +250,26 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
             <strong>CSV</strong>, <strong>XLSX</strong>, <strong>OFX/QFX</strong> e{' '}
             <strong>QIF</strong>.
           </p>
+
+          <div className="mb-4 max-w-sm">
+            <label className="label">Questi movimenti sono di…</label>
+            <input
+              className="input"
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+              list="origin-options"
+              placeholder="Es. Conto corrente"
+            />
+            <datalist id="origin-options">
+              <option value="Conto corrente" />
+              <option value="Carta prepagata" />
+              <option value="Carta di credito" />
+            </datalist>
+            <p className="mt-1 text-xs text-slate-400">
+              Serve solo per distinguere Conto e Carta nei movimenti. Il numero di
+              conto/carta non viene importato.
+            </p>
+          </div>
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-10 text-center hover:border-brand-400 hover:bg-brand-50">
             <span className="text-3xl">📄</span>
             <span className="mt-2 font-medium text-slate-700">
