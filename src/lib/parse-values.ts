@@ -123,17 +123,21 @@ export function parseAmount(raw: string, decimalSeparator: ',' | '.'): number | 
   } else if (hasComma || hasDot) {
     const sep = hasComma ? ',' : '.';
     const segments = value.split(sep);
-    const last = segments[segments.length - 1];
-    if (segments.length === 2 && last.length === 2) {
-      // due cifre finali → decimale
-      normalized = segments[0] + '.' + last;
-    } else if (last.length === 3) {
-      // tre cifre → separatore delle migliaia
+    if (segments.length > 2) {
+      // separatore ripetuto (es. 1.234.567) → sono migliaia
       normalized = segments.join('');
     } else {
-      // ambiguo: usa l'impostazione indicata
-      normalized =
-        sep === decimalSeparator ? segments.join('.') : segments.join('');
+      const last = segments[1];
+      if (last.length === 3 && sep !== decimalSeparator) {
+        // esattamente 3 cifre e NON è il separatore decimale indicato → migliaia
+        // (es. 1.234 → 1234). La valuta ha al massimo 2 decimali.
+        normalized = segments.join('');
+      } else {
+        // decimale: 1 o 2 cifre (es. "54.3" = 54,30 dai numeri Excel, "10,5"),
+        // oppure molte cifre (arrotondamenti in virgola mobile), oppure 3 cifre
+        // se è proprio il separatore decimale scelto.
+        normalized = segments[0] + '.' + last;
+      }
     }
   } else {
     normalized = value;
