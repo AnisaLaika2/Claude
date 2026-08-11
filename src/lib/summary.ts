@@ -1,6 +1,24 @@
 // Funzioni di aggregazione per dashboard e report.
 
-import type { Category, CategoryGroup, Transaction } from '../types';
+import type { Account, Category, CategoryGroup, Transaction } from '../types';
+
+/**
+ * Saldo aggiornato di un conto: al saldo di base si aggiungono i movimenti di
+ * quel conto (per metodo di pagamento) con data successiva a quella di
+ * riferimento. Include i giroconti, perché spostano davvero denaro tra i conti.
+ */
+export function accountBalance(account: Account, transactions: Transaction[]): number {
+  let adjustment = 0;
+  const asOf = account.asOf;
+  if (asOf) {
+    for (const t of transactions) {
+      if (t.paymentMethod !== account.name) continue;
+      if (!(t.date > asOf)) continue;
+      adjustment += t.type === 'income' ? t.amount : -t.amount;
+    }
+  }
+  return account.balance + adjustment;
+}
 
 /** Esclude i giroconti (ricariche carta ecc.) dai conteggi. */
 export function countable(txs: Transaction[]): Transaction[] {

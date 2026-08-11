@@ -140,6 +140,25 @@ export async function clearTransactions(): Promise<void> {
   const db = await getDB();
   await db.clear('transactions');
 }
+/**
+ * Rimuove i movimenti generati automaticamente dalle spese ricorrenti.
+ * Le ricorrenti ora servono solo per la previsione e non creano più movimenti.
+ */
+export async function removeGeneratedRecurring(): Promise<number> {
+  const db = await getDB();
+  const tx = db.transaction('transactions', 'readwrite');
+  let removed = 0;
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    if (cursor.value.source === 'recurring') {
+      await cursor.delete();
+      removed++;
+    }
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return removed;
+}
 
 // ---- Categorie ----
 export async function getCategories(): Promise<Category[]> {

@@ -38,8 +38,10 @@ export interface Category {
 export interface Account {
   id: string;
   name: string;
-  /** saldo attuale in euro */
+  /** saldo di base inserito dall'utente */
   balance: number;
+  /** data (yyyy-mm-dd) a cui si riferisce il saldo: i movimenti successivi lo aggiornano */
+  asOf?: string;
 }
 
 /** Macro-categoria: raggruppa più micro-categorie e porta il budget mensile. */

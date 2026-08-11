@@ -3,7 +3,6 @@ import { useData } from '../store/DataContext';
 import { EmptyState } from '../components/ui';
 import type { Recurring, TxType } from '../types';
 import { formatCurrency, uid } from '../lib/format';
-import { generateDueTransactions } from '../lib/recurring';
 
 const empty = (): Recurring => ({
   id: '',
@@ -23,7 +22,6 @@ export default function RecurringView() {
     categories,
     saveRecurring,
     removeRecurring,
-    addTransactions,
   } = useData();
   const [form, setForm] = useState<Recurring>(empty());
 
@@ -38,25 +36,18 @@ export default function RecurringView() {
       alert('Inserisci descrizione e importo.');
       return;
     }
-    const newRec: Recurring = { ...form, id: uid() };
-    await saveRecurring(newRec);
+    await saveRecurring({ ...form, id: uid() });
     setForm(empty());
-
-    // Genera subito i movimenti dovuti per la nuova ricorrenza.
-    const { transactions, updated } = generateDueTransactions([newRec]);
-    if (transactions.length) {
-      await addTransactions(transactions);
-      for (const r of updated) await saveRecurring(r);
-      alert(`Aggiunta la ricorrenza e generati ${transactions.length} movimenti.`);
-    }
   }
 
   return (
     <div className="space-y-5">
-      <h2 className="text-xl font-semibold text-slate-800">Spese ricorrenti</h2>
+      <h2 className="text-xl font-semibold text-slate-800">Spese fisse ricorrenti</h2>
       <p className="text-sm text-slate-500">
-        Abbonamenti e bollette generati automaticamente ogni mese (all'avvio
-        dell'app). Il giorno indica la data del mese in cui creare il movimento.
+        Abbonamenti e bollette (es. affitto, luce, Netflix). Servono solo per la
+        <strong> previsione</strong>: nel Riepilogo vedrai le spese fisse in arrivo e
+        quanto tenere da parte. <strong>Non creano movimenti</strong> e non toccano i
+        totali di spese/entrate. Il “giorno” indica quando arriva l’addebito.
       </p>
 
       <div className="card p-4">

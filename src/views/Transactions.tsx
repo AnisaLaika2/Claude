@@ -76,6 +76,22 @@ export default function Transactions() {
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
   }, [transactions, monthFilter, catFilter, methodFilter, search]);
 
+  // Rileva i possibili doppioni: stessa data, stesso importo, stessa descrizione.
+  const dupCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of transactions) {
+      const k = `${t.date}|${t.amount}|${t.description.trim().toLowerCase()}`;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [transactions]);
+  const isDuplicate = (t: Transaction) =>
+    (dupCounts.get(`${t.date}|${t.amount}|${t.description.trim().toLowerCase()}`) ?? 0) > 1;
+  const duplicateCount = useMemo(
+    () => transactions.filter(isDuplicate).length,
+    [transactions, dupCounts],
+  );
+
   // Torna alla prima pagina quando cambiano i filtri o i dati.
   useEffect(() => {
     setPage(0);
@@ -182,6 +198,13 @@ export default function Transactions() {
         )}
       </div>
 
+      {duplicateCount > 0 && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
+          ⚠️ {duplicateCount} possibili doppioni (stessa data, stesso importo e stessa
+          descrizione). Controllali ed elimina quelli in più con il 🗑️.
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <EmptyState title="Nessun movimento trovato con questi filtri." />
       ) : (
@@ -208,6 +231,11 @@ export default function Transactions() {
                       {t.excludeFromTotals && (
                         <span className="badge ml-2 bg-slate-200 text-slate-600">
                           giroconto
+                        </span>
+                      )}
+                      {isDuplicate(t) && (
+                        <span className="badge ml-2 bg-orange-100 text-orange-700">
+                          possibile doppione
                         </span>
                       )}
                     </div>

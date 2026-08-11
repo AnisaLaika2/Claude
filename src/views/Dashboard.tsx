@@ -13,10 +13,17 @@ import {
 } from 'recharts';
 import { useData } from '../store/DataContext';
 import { StatCard, EmptyState } from '../components/ui';
-import { formatCurrency, formatMonthLabel, currentMonth, uid } from '../lib/format';
-import type { Account } from '../types';
+import {
+  formatCurrency,
+  formatMonthLabel,
+  currentMonth,
+  todayISO,
+  uid,
+} from '../lib/format';
+import type { Account, Recurring, Transaction } from '../types';
 import {
   BUDGET_WARN_RATIO,
+  accountBalance,
   budgetOverview,
   budgetStatus,
   expenseByCategory,
@@ -25,11 +32,19 @@ import {
   monthlyTrend,
   totals,
 } from '../lib/summary';
+import { parseAmount } from '../lib/parse-values';
 import { notificationsEnabled, showNotification } from '../lib/notify';
 
 export default function Dashboard() {
-  const { transactions, categories, groups, accounts, saveAccount, removeAccount } =
-    useData();
+  const {
+    transactions,
+    categories,
+    groups,
+    accounts,
+    recurring,
+    saveAccount,
+    removeAccount,
+  } = useData();
   const [month, setMonth] = useState(currentMonth());
 
   const monthTxs = useMemo(
@@ -81,6 +96,7 @@ export default function Dashboard() {
       <div className="space-y-5">
         <AccountsCard
           accounts={accounts}
+          transactions={transactions}
           onSave={saveAccount}
           onRemove={removeAccount}
         />
@@ -111,8 +127,20 @@ export default function Dashboard() {
         </select>
       </div>
 
-      {/* Saldo attuale in banca (impostato a mano) */}
-      <AccountsCard accounts={accounts} onSave={saveAccount} onRemove={removeAccount} />
+      {/* Saldo attuale in banca (impostato a mano, aggiornato dai movimenti) */}
+      <AccountsCard
+        accounts={accounts}
+        transactions={transactions}
+        onSave={saveAccount}
+        onRemove={removeAccount}
+      />
+
+      {/* Previsione: spese fisse in arrivo */}
+      <ForecastCard
+        recurring={recurring}
+        accountsTotal={accounts.reduce((s, a) => s + accountBalance(a, transactions), 0)}
+        hasAccounts={accounts.length > 0}
+      />
 
       {/* Avvisi budget */}
       {alerts.length > 0 && (
@@ -302,39 +330,39 @@ export default function Dashboard() {
 
 function AccountsCard({
   accounts,
+  transactions,
   onSave,
   onRemove,
 }: {
   accounts: Account[];
+  transactions: Transaction[];
   onSave: (a: Account) => void;
   onRemove: (id: string) => void;
 }) {
-  const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+  const total = accounts.reduce((s, a) => s + accountBalance(a, transactions), 0);
 
   function add(name: string) {
-    onSave({ id: uid(), name, balance: 0 });
+    onSave({ id: uid(), name, balance: 0, asOf: todayISO() });
   }
 
   return (
-    <div className="card p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-slate-700">Saldo attuale in banca</h3>
-        {accounts.length > 0 && (
-          <span
-            className={`text-2xl font-bold ${
-              total >= 0 ? 'text-slate-800' : 'text-red-600'
-            }`}
-          >
-            {formatCurrency(total)}
-          </span>
-        )}
-      </div>
+    <div className="rounded-xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm">
+      <p className="text-sm font-medium text-brand-700">💰 Saldo attuale in banca</p>
+      {accounts.length > 0 && (
+        <p
+          className={`mt-1 text-4xl font-extrabold tracking-tight ${
+            total >= 0 ? 'text-slate-900' : 'text-red-600'
+          }`}
+        >
+          {formatCurrency(total)}
+        </p>
+      )}
 
       {accounts.length === 0 ? (
         <div className="mt-2">
-          <p className="mb-3 text-sm text-slate-500">
+          <p className="mb-3 text-sm text-slate-600">
             Inserisci il saldo reale dei tuoi conti/carte per avere il quadro
-            completo. Lo aggiorni tu quando vuoi (l’app non lo cambia da sola).
+            completo. Si aggiorna da solo con i movimenti che aggiungi/importi dopo.
           </p>
           <div className="flex flex-wrap gap-2">
             <button className="btn-secondary" onClick={() => add('Conto corrente')}>
@@ -348,37 +376,172 @@ function AccountsCard({
       ) : (
         <div className="mt-3 space-y-2">
           {accounts.map((a) => (
-            <div key={a.id} className="flex items-center gap-2">
-              <input
-                className="input min-w-0 flex-1"
-                value={a.name}
-                onChange={(e) => onSave({ ...a, name: e.target.value })}
-                placeholder="Nome conto/carta"
-              />
-              <input
-                className="input w-32 text-right"
-                type="number"
-                step="0.01"
-                value={a.balance}
-                onChange={(e) => onSave({ ...a, balance: Number(e.target.value) || 0 })}
-              />
-              <span className="text-sm text-slate-400">€</span>
-              <button
-                className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
-                onClick={() => onRemove(a.id)}
-                title="Rimuovi"
-              >
-                ✕
-              </button>
-            </div>
+            <AccountRow
+              key={a.id}
+              account={a}
+              computed={accountBalance(a, transactions)}
+              onSave={onSave}
+              onRemove={() => onRemove(a.id)}
+            />
           ))}
-          <button
-            className="btn-ghost text-brand-700"
-            onClick={() => add('Nuovo conto')}
-          >
+          <button className="btn-ghost text-brand-700" onClick={() => add('Nuovo conto')}>
             + Aggiungi conto
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+function AccountRow({
+  account,
+  computed,
+  onSave,
+  onRemove,
+}: {
+  account: Account;
+  computed: number;
+  onSave: (a: Account) => void;
+  onRemove: () => void;
+}) {
+  // Stato locale della stringa importo per permettere di digitare i centesimi
+  // (virgola o punto) senza che il campo si "resetti" a ogni tasto.
+  const [text, setText] = useState(
+    account.balance ? String(account.balance).replace('.', ',') : '',
+  );
+
+  function commit(raw: string) {
+    setText(raw);
+    const n = parseAmount(raw, ',') ?? 0;
+    // Ri-àncora il saldo a oggi: i movimenti successivi lo aggiorneranno.
+    onSave({ ...account, balance: n, asOf: todayISO() });
+  }
+
+  const adjusted = Math.abs(computed - account.balance) > 0.005;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <input
+          className="input min-w-0 flex-1 bg-white"
+          value={account.name}
+          onChange={(e) => onSave({ ...account, name: e.target.value })}
+          placeholder="Nome conto/carta"
+        />
+        <input
+          className="input w-32 bg-white text-right"
+          type="text"
+          inputMode="decimal"
+          value={text}
+          onChange={(e) => commit(e.target.value)}
+          placeholder="0,00"
+        />
+        <span className="text-sm text-slate-400">€</span>
+        <button
+          className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
+          onClick={onRemove}
+          title="Rimuovi"
+        >
+          ✕
+        </button>
+      </div>
+      {adjusted && (
+        <p className="mt-0.5 pl-1 text-xs text-slate-500">
+          aggiornato con i movimenti:{' '}
+          <span className="font-semibold text-slate-700">{formatCurrency(computed)}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ForecastCard({
+  recurring,
+  accountsTotal,
+  hasAccounts,
+}: {
+  recurring: Recurring[];
+  accountsTotal: number;
+  hasAccounts: boolean;
+}) {
+  const active = recurring.filter((r) => r.active);
+  if (active.length === 0) return null;
+
+  const today = new Date().getDate();
+  // In arrivo entro fine mese (giorno di addebito non ancora passato).
+  const upcoming = active
+    .filter((r) => r.dayOfMonth >= today)
+    .sort((a, b) => a.dayOfMonth - b.dayOfMonth);
+  const upExpense = upcoming
+    .filter((r) => r.type === 'expense')
+    .reduce((s, r) => s + r.amount, 0);
+  const upIncome = upcoming
+    .filter((r) => r.type === 'income')
+    .reduce((s, r) => s + r.amount, 0);
+  const predicted = accountsTotal - upExpense + upIncome;
+  const shortfall = hasAccounts && predicted < 0;
+
+  return (
+    <div className="card p-4">
+      <h3 className="mb-1 font-semibold text-slate-700">🔮 Spese fisse in arrivo</h3>
+      <p className="mb-3 text-xs text-slate-400">
+        Previsione dalle spese ricorrenti — non conta nei totali del mese.
+      </p>
+
+      {upcoming.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          Nessuna spesa fissa in arrivo entro fine mese. 👍
+        </p>
+      ) : (
+        <>
+          <div className="space-y-1">
+            {upcoming.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">
+                  <span className="mr-2 inline-block w-14 text-slate-400">
+                    il {r.dayOfMonth}
+                  </span>
+                  {r.description}
+                </span>
+                <span
+                  className={r.type === 'income' ? 'text-emerald-600' : 'text-slate-800'}
+                >
+                  {r.type === 'income' ? '+' : '−'}
+                  {formatCurrency(r.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Da tenere per le spese fisse</span>
+              <span className="font-semibold text-slate-800">
+                {formatCurrency(upExpense)}
+              </span>
+            </div>
+            {hasAccounts && (
+              <div className="mt-1 flex justify-between">
+                <span className="text-slate-500">Saldo previsto dopo di esse</span>
+                <span
+                  className={`font-semibold ${
+                    predicted >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}
+                >
+                  {formatCurrency(predicted)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {shortfall && (
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              ⚠️ Attenzione: le spese fisse in arrivo ({formatCurrency(upExpense)})
+              superano il saldo disponibile. Rischi di andare sotto di{' '}
+              {formatCurrency(-predicted)}.
+            </div>
+          )}
+        </>
       )}
     </div>
   );

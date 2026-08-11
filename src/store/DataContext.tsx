@@ -19,7 +19,6 @@ import type {
   Transaction,
 } from '../types';
 import * as db from '../db/db';
-import { generateDueTransactions } from '../lib/recurring';
 
 interface DataContextValue {
   loading: boolean;
@@ -99,16 +98,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         await db.ensureSeed();
         await db.ensureGroupsMigration();
+        // Le ricorrenti ora sono solo previsione: rimuovo i movimenti generati
+        // in passato che falsavano i totali.
+        await db.removeGeneratedRecurring();
         await reloadAll();
-
-        // Genera automaticamente i movimenti ricorrenti dovuti.
-        const recs = await db.getRecurring();
-        const { transactions: newTx, updated } = generateDueTransactions(recs);
-        if (newTx.length) {
-          await db.bulkPutTransactions(newTx);
-          for (const r of updated) await db.putRecurring(r);
-          await reloadAll();
-        }
       } catch (err) {
         // Non lasciare l'app bloccata sul caricamento in caso di errore.
         console.error('Errore inizializzazione dati:', err);
