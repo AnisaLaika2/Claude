@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useData } from '../store/DataContext';
-import { exportAll, importAll, type BackupData } from '../db/db';
+import { exportAll, importAll, clearTransactions, type BackupData } from '../db/db';
 import { formatCurrency } from '../lib/format';
 import Papa from 'papaparse';
 
@@ -62,6 +62,19 @@ export default function Settings() {
     }
   }
 
+  async function wipeTransactions() {
+    if (
+      !window.confirm(
+        `Eliminare TUTTI i ${transactions.length} movimenti?\n\nCategorie, regole e ricorrenti restano. Utile per reimportare da capo. L'operazione non è reversibile: valuta prima un Backup.`,
+      )
+    ) {
+      return;
+    }
+    await clearTransactions();
+    await reloadAll();
+    setMsg('Tutti i movimenti sono stati eliminati.');
+  }
+
   const totalBalance = transactions.reduce(
     (acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount),
     0,
@@ -116,6 +129,21 @@ export default function Settings() {
         <p className="mt-2 text-xs text-red-500">
           Attenzione: il ripristino sovrascrive tutti i dati presenti.
         </p>
+      </div>
+
+      <div className="card border-red-200 p-4">
+        <h3 className="mb-3 font-semibold text-red-700">Azzera movimenti</h3>
+        <p className="mb-3 text-sm text-slate-600">
+          Elimina tutti i movimenti per reimportare da capo (ad esempio dopo un
+          import andato storto). Categorie, budget, regole e ricorrenti restano.
+        </p>
+        <button
+          className="btn-danger"
+          onClick={wipeTransactions}
+          disabled={transactions.length === 0}
+        >
+          🗑️ Elimina tutti i movimenti ({transactions.length})
+        </button>
       </div>
 
       <div className="card p-4">

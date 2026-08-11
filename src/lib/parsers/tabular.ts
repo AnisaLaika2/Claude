@@ -37,11 +37,28 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
+/**
+ * Converte una cella in stringa.
+ * Le date reali di Excel vengono trasformate direttamente in ISO yyyy-mm-dd
+ * (usando i componenti locali, così non si sposta il giorno per il fuso orario)
+ * evitando le ambiguità giorno/mese della formattazione testuale.
+ */
+function cellToString(cell: unknown): string {
+  if (cell == null) return '';
+  if (cell instanceof Date) {
+    const y = cell.getFullYear();
+    const m = String(cell.getMonth() + 1).padStart(2, '0');
+    const d = String(cell.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(cell).trim();
+}
+
 /** Conta quante celle della riga assomigliano a un titolo di colonna. */
 function headerScore(row: unknown[]): number {
   let score = 0;
   for (const cell of row) {
-    const t = String(cell ?? '').toLowerCase().trim();
+    const t = cellToString(cell).toLowerCase();
     if (!t) continue;
     if (HEADER_TOKENS.some((tok) => t.includes(tok))) score++;
   }
@@ -69,7 +86,7 @@ function matrixToTable(matrix: unknown[][]): TabularData {
   // Se nessuna riga sembra un'intestazione, si assume la prima.
   if (bestScore < 2) headerIdx = 0;
 
-  const rawHeaders = (matrix[headerIdx] || []).map((h) => String(h ?? '').trim());
+  const rawHeaders = (matrix[headerIdx] || []).map((h) => cellToString(h));
 
   // Nomi di colonna univoci e non vuoti.
   const used = new Map<string, number>();
@@ -88,10 +105,10 @@ function matrixToTable(matrix: unknown[][]): TabularData {
   const rows: RawRow[] = [];
   for (let i = headerIdx + 1; i < matrix.length; i++) {
     const arr = matrix[i] || [];
-    if (!arr.some((c) => String(c ?? '').trim() !== '')) continue; // riga vuota
+    if (!arr.some((c) => cellToString(c) !== '')) continue; // riga vuota
     const obj: RawRow = {};
     for (let c = 0; c < columns.length; c++) {
-      obj[columns[c]] = String(arr[c] ?? '').trim();
+      obj[columns[c]] = cellToString(arr[c]);
     }
     rows.push(obj);
   }
@@ -115,15 +132,16 @@ async function parseCSV(file: File): Promise<TabularData> {
 
 async function parseXLSX(file: File): Promise<TabularData> {
   const buffer = await readFileAsArrayBuffer(file);
-  const wb = XLSX.read(buffer, { type: 'array' });
+  // cellDates:true → le date diventano oggetti Date affidabili (niente ambiguità
+  // sul formato). raw:true → gli importi restano numeri col segno corretto.
+  const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) throw new Error('Il file Excel non contiene fogli.');
   const sheet = wb.Sheets[sheetName];
-  // header:1 → matrice di celle; raw:false → date/numeri già formattati come testo.
   const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: '',
-    raw: false,
+    raw: true,
     blankrows: false,
   });
   return matrixToTable(matrix as unknown[][]);

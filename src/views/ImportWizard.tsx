@@ -20,11 +20,21 @@ const blankMapping: Omit<ImportProfile, 'id' | 'name'> = {
   dateColumn: '',
   amountColumn: '',
   descriptionColumn: '',
+  detailsColumn: '',
   debitColumn: '',
   creditColumn: '',
   dateFormat: 'dd/mm/yyyy',
   decimalSeparator: ',',
 };
+
+/** Unisce descrizione e dettagli in un unico testo leggibile. */
+function combineDescription(main: string, details: string): string {
+  const m = main.replace(/\s+/g, ' ').trim();
+  const d = details.replace(/\s+/g, ' ').trim();
+  if (!d || d === m || m.includes(d)) return m || d;
+  if (!m) return d;
+  return `${m} — ${d}`;
+}
 
 export default function ImportWizard({ onDone }: { onDone: () => void }) {
   const {
@@ -138,7 +148,10 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
 
     for (const row of tabular.rows) {
       const dateISO = parseDate(get(row, mapping.dateColumn), mapping.dateFormat);
-      const description = (get(row, mapping.descriptionColumn) || '').trim();
+      const description = combineDescription(
+        get(row, mapping.descriptionColumn),
+        get(row, mapping.detailsColumn || ''),
+      );
       if (!dateISO || !description) {
         skipped++;
         continue;
@@ -216,6 +229,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       dateColumn: p.dateColumn,
       amountColumn: p.amountColumn,
       descriptionColumn: p.descriptionColumn,
+      detailsColumn: p.detailsColumn ?? '',
       debitColumn: p.debitColumn ?? '',
       creditColumn: p.creditColumn ?? '',
       dateFormat: p.dateFormat,
@@ -326,6 +340,12 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
               onChange={(v) => setMapping((m) => ({ ...m, descriptionColumn: v }))}
             />
             <ColumnSelect
+              label="Colonna Dettagli (facoltativa)"
+              columns={tabular.columns}
+              value={mapping.detailsColumn || ''}
+              onChange={(v) => setMapping((m) => ({ ...m, detailsColumn: v }))}
+            />
+            <ColumnSelect
               label="Colonna Importo (con segno)"
               columns={tabular.columns}
               value={mapping.amountColumn}
@@ -418,8 +438,15 @@ function autoGuessColumns(columns: string[]): Partial<Omit<ImportProfile, 'id' |
   const find = (keys: string[]) =>
     columns.find((c) => keys.some((k) => c.toLowerCase().includes(k))) || '';
   guess.dateColumn = find(['data', 'date']);
-  guess.descriptionColumn = find(['descr', 'causale', 'operazione', 'memo', 'payee', 'dettagli']);
+  guess.descriptionColumn = find(['operazione', 'causale', 'descr', 'memo', 'payee']);
   guess.amountColumn = find(['importo', 'amount', 'valore']);
+  // La colonna dettagli è una colonna descrittiva diversa da quella scelta.
+  const details = columns.find(
+    (c) =>
+      c !== guess.descriptionColumn &&
+      ['dettagli', 'descrizione', 'note'].some((k) => c.toLowerCase().includes(k)),
+  );
+  if (details) guess.detailsColumn = details;
   return guess;
 }
 

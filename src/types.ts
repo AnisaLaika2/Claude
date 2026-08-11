@@ -63,6 +63,8 @@ export interface ImportProfile {
   dateColumn: string;
   amountColumn: string;
   descriptionColumn: string;
+  /** colonna con i dettagli, aggiunta alla descrizione (opzionale) */
+  detailsColumn?: string;
   /** colonna importo uscite separata (opzionale, alcune banche la usano) */
   debitColumn?: string;
   creditColumn?: string;
