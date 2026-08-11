@@ -65,6 +65,8 @@ export interface ImportProfile {
   descriptionColumn: string;
   /** colonna con i dettagli, aggiunta alla descrizione (opzionale) */
   detailsColumn?: string;
+  /** colonna con la categoria della banca (opzionale) */
+  categoryColumn?: string;
   /** colonna importo uscite separata (opzionale, alcune banche la usano) */
   debitColumn?: string;
   creditColumn?: string;
@@ -87,6 +89,8 @@ export interface StagedTransaction {
   type: TxType;
   description: string;
   categoryId: string | null;
+  /** nome categoria letto dal file, da creare/associare in fase di import */
+  fileCategory?: string;
   dedupHash: string;
   duplicate: boolean;
   selected: boolean;

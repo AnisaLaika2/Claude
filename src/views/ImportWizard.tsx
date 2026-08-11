@@ -21,6 +21,7 @@ const blankMapping: Omit<ImportProfile, 'id' | 'name'> = {
   amountColumn: '',
   descriptionColumn: '',
   detailsColumn: '',
+  categoryColumn: '',
   debitColumn: '',
   creditColumn: '',
   dateFormat: 'dd/mm/yyyy',
@@ -44,6 +45,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
     profiles,
     addTransactions,
     saveProfile,
+    saveCategory,
   } = useData();
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -111,17 +113,26 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
     dateISO: string,
     signedAmount: number,
     description: string,
+    fileCategory?: string,
   ): StagedTransaction {
     const type = signedAmount < 0 ? 'expense' : 'income';
     const amount = Math.abs(signedAmount);
     const hash = computeDedupHash(dateISO, amount, description);
+
+    // Priorità: le regole (imparate dalle correzioni dell'utente) vincono sulla
+    // categoria del file. Se una regola corrisponde alla descrizione, la si usa;
+    // altrimenti si terrà la categoria letta dall'estratto conto.
+    const ruleCat = type === 'expense' ? categorize(description, rules) : null;
+    const fileCat = fileCategory?.trim() || undefined;
+
     return {
       tempId: uid(),
       date: dateISO,
       amount,
       type,
       description,
-      categoryId: type === 'expense' ? categorize(description, rules) : null,
+      categoryId: ruleCat,
+      fileCategory: ruleCat ? undefined : fileCat,
       dedupHash: hash,
       duplicate: existingHashes.has(hash),
       selected: !existingHashes.has(hash),
@@ -171,7 +182,10 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
         continue;
       }
 
-      const st = toStaged(dateISO, signed, description);
+      const fileCategory = mapping.categoryColumn
+        ? get(row, mapping.categoryColumn)
+        : undefined;
+      const st = toStaged(dateISO, signed, description, fileCategory);
       // Duplicato anche all'interno dello stesso file.
       if (seenInFile.has(st.dedupHash)) {
         st.duplicate = true;
@@ -197,19 +211,49 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       setError('Nessuna transazione selezionata.');
       return;
     }
-    const txs: Transaction[] = toImport.map((s) => ({
-      id: uid(),
-      date: s.date,
-      amount: s.amount,
-      type: s.type,
-      description: s.description,
-      categoryId: s.categoryId,
-      paymentMethod: origin.trim() || 'Banca',
-      notes: '',
-      source: 'import',
-      dedupHash: s.dedupHash,
-      createdAt: Date.now(),
-    }));
+
+    // Risolve le categorie lette dal file: cerca una categoria esistente con lo
+    // stesso nome (ignorando maiuscole), altrimenti la crea al volo.
+    const byName = new Map<string, string>();
+    for (const c of categories) byName.set(c.name.trim().toLowerCase(), c.id);
+    const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#6366f1', '#84cc16', '#eab308', '#f43f5e', '#8b5cf6'];
+
+    async function resolveCategory(name: string, type: 'expense' | 'income'): Promise<string> {
+      const key = name.trim().toLowerCase();
+      const existing = byName.get(key);
+      if (existing) return existing;
+      const id = uid();
+      await saveCategory({
+        id,
+        name: name.trim(),
+        color: palette[byName.size % palette.length],
+        type,
+        budget: 0,
+      });
+      byName.set(key, id);
+      return id;
+    }
+
+    const txs: Transaction[] = [];
+    for (const s of toImport) {
+      let categoryId = s.categoryId;
+      if (!categoryId && s.fileCategory) {
+        categoryId = await resolveCategory(s.fileCategory, s.type);
+      }
+      txs.push({
+        id: uid(),
+        date: s.date,
+        amount: s.amount,
+        type: s.type,
+        description: s.description,
+        categoryId,
+        paymentMethod: origin.trim() || 'Banca',
+        notes: '',
+        source: 'import',
+        dedupHash: s.dedupHash,
+        createdAt: Date.now(),
+      });
+    }
     await addTransactions(txs);
 
     if (saveProfileName.trim() && tabular) {
@@ -230,6 +274,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       amountColumn: p.amountColumn,
       descriptionColumn: p.descriptionColumn,
       detailsColumn: p.detailsColumn ?? '',
+      categoryColumn: p.categoryColumn ?? '',
       debitColumn: p.debitColumn ?? '',
       creditColumn: p.creditColumn ?? '',
       dateFormat: p.dateFormat,
@@ -346,6 +391,12 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
               onChange={(v) => setMapping((m) => ({ ...m, detailsColumn: v }))}
             />
             <ColumnSelect
+              label="Colonna Categoria (facoltativa)"
+              columns={tabular.columns}
+              value={mapping.categoryColumn || ''}
+              onChange={(v) => setMapping((m) => ({ ...m, categoryColumn: v }))}
+            />
+            <ColumnSelect
               label="Colonna Importo (con segno)"
               columns={tabular.columns}
               value={mapping.amountColumn}
@@ -447,6 +498,7 @@ function autoGuessColumns(columns: string[]): Partial<Omit<ImportProfile, 'id' |
       ['dettagli', 'descrizione', 'note'].some((k) => c.toLowerCase().includes(k)),
   );
   if (details) guess.detailsColumn = details;
+  guess.categoryColumn = find(['categoria', 'category']);
   return guess;
 }
 
@@ -603,10 +655,21 @@ function PreviewStep({
                   {s.type === 'expense' ? (
                     <select
                       className="input !py-1 !text-xs"
-                      value={s.categoryId ?? ''}
-                      onChange={(e) => update(s.tempId, { categoryId: e.target.value || null })}
+                      value={s.categoryId ?? (s.fileCategory ? '__file__' : '')}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__file__') update(s.tempId, { categoryId: null });
+                        else
+                          update(s.tempId, {
+                            categoryId: v || null,
+                            fileCategory: undefined,
+                          });
+                      }}
                     >
                       <option value="">— nessuna —</option>
+                      {s.fileCategory && (
+                        <option value="__file__">{s.fileCategory} (dal file)</option>
+                      )}
                       {categories
                         .filter((c) => c.type === 'expense')
                         .map((c) => (
@@ -615,6 +678,10 @@ function PreviewStep({
                           </option>
                         ))}
                     </select>
+                  ) : s.fileCategory ? (
+                    <span className="badge bg-emerald-100 text-emerald-700">
+                      {s.fileCategory}
+                    </span>
                   ) : (
                     <span className="badge bg-emerald-100 text-emerald-700">entrata</span>
                   )}
