@@ -105,15 +105,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       saveTransaction: async (t) => {
         await db.putTransaction(t);
-        setTransactions(await db.getTransactions());
+        // Aggiorna in memoria senza rileggere tutto il database (più veloce).
+        setTransactions((prev) => {
+          const i = prev.findIndex((x) => x.id === t.id);
+          if (i === -1) return [...prev, t];
+          const copy = prev.slice();
+          copy[i] = t;
+          return copy;
+        });
       },
       addTransactions: async (list) => {
         await db.bulkPutTransactions(list);
-        setTransactions(await db.getTransactions());
+        setTransactions((prev) => [...prev, ...list]);
       },
       removeTransaction: async (id) => {
         await db.deleteTransaction(id);
-        setTransactions(await db.getTransactions());
+        setTransactions((prev) => prev.filter((x) => x.id !== id));
       },
 
       saveCategory: async (c) => {

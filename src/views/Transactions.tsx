@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../store/DataContext';
 import { Modal, EmptyState } from '../components/ui';
 import type { Transaction, TxType } from '../types';
@@ -34,6 +34,11 @@ export default function Transactions() {
   const [monthFilter, setMonthFilter] = useState('all');
   const [catFilter, setCatFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+  // Riga per cui è aperto il menù categoria (uno solo alla volta = più leggero).
+  const [editCatId, setEditCatId] = useState<string | null>(null);
+  // Paginazione: mostra un blocco di righe per volta.
+  const PAGE_SIZE = 100;
+  const [page, setPage] = useState(0);
 
   const methods = useMemo(() => {
     const set = new Set(
@@ -70,6 +75,18 @@ export default function Transactions() {
       )
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
   }, [transactions, monthFilter, catFilter, methodFilter, search]);
+
+  // Torna alla prima pagina quando cambiano i filtri o i dati.
+  useEffect(() => {
+    setPage(0);
+  }, [monthFilter, catFilter, methodFilter, search, transactions.length]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = useMemo(
+    () => filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE),
+    [filtered, safePage],
+  );
 
   async function onSave(t: Transaction) {
     const toSave: Transaction = {
@@ -180,7 +197,7 @@ export default function Transactions() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t) => (
+              {pageRows.map((t) => (
                 <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="whitespace-nowrap px-3 py-2 text-slate-600">
                     {formatDate(t.date)}
@@ -200,20 +217,45 @@ export default function Transactions() {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      className="input !py-1 !text-xs"
-                      value={t.categoryId ?? ''}
-                      onChange={(e) => onInlineCategory(t, e.target.value || null)}
-                    >
-                      <option value="">— nessuna —</option>
-                      {categories
-                        .filter((c) => c.type === t.type)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
+                    {editCatId === t.id ? (
+                      <select
+                        autoFocus
+                        className="input !py-1 !text-xs"
+                        value={t.categoryId ?? ''}
+                        onChange={(e) => {
+                          onInlineCategory(t, e.target.value || null);
+                          setEditCatId(null);
+                        }}
+                        onBlur={() => setEditCatId(null)}
+                      >
+                        <option value="">— nessuna —</option>
+                        {categories
+                          .filter((c) => c.type === t.type)
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                      </select>
+                    ) : (
+                      <button
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-slate-100"
+                        onClick={() => setEditCatId(t.id)}
+                        title="Tocca per cambiare categoria"
+                      >
+                        {t.categoryId ? (
+                          <>
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ background: catById.get(t.categoryId)?.color ?? '#94a3b8' }}
+                            />
+                            {catById.get(t.categoryId)?.name ?? '—'}
+                          </>
+                        ) : (
+                          <span className="text-slate-400">assegna…</span>
+                        )}
+                      </button>
+                    )}
                   </td>
                   <td
                     className={`whitespace-nowrap px-3 py-2 text-right font-semibold ${
@@ -246,6 +288,33 @@ export default function Transactions() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
+          <span>
+            {filtered.length} movimenti
+            {pageCount > 1 && ` · pagina ${safePage + 1} di ${pageCount}`}
+          </span>
+          {pageCount > 1 && (
+            <div className="flex gap-2">
+              <button
+                className="btn-secondary"
+                disabled={safePage === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                ← Precedenti
+              </button>
+              <button
+                className="btn-secondary"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              >
+                Successivi →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
