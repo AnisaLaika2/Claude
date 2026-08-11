@@ -22,6 +22,7 @@ const blankMapping: Omit<ImportProfile, 'id' | 'name'> = {
   descriptionColumn: '',
   detailsColumn: '',
   categoryColumn: '',
+  accountColumn: '',
   debitColumn: '',
   creditColumn: '',
   dateFormat: 'dd/mm/yyyy',
@@ -113,7 +114,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
     dateISO: string,
     signedAmount: number,
     description: string,
-    fileCategory?: string,
+    opts?: { fileCategory?: string; paymentMethod?: string; transfer?: boolean },
   ): StagedTransaction {
     const type = signedAmount < 0 ? 'expense' : 'income';
     const amount = Math.abs(signedAmount);
@@ -123,7 +124,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
     // categoria del file. Se una regola corrisponde alla descrizione, la si usa;
     // altrimenti si terrà la categoria letta dall'estratto conto.
     const ruleCat = type === 'expense' ? categorize(description, rules) : null;
-    const fileCat = fileCategory?.trim() || undefined;
+    const fileCat = opts?.fileCategory?.trim() || undefined;
 
     return {
       tempId: uid(),
@@ -133,6 +134,8 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       description,
       categoryId: ruleCat,
       fileCategory: ruleCat ? undefined : fileCat,
+      paymentMethod: opts?.paymentMethod,
+      excludeFromTotals: opts?.transfer || undefined,
       dedupHash: hash,
       duplicate: existingHashes.has(hash),
       selected: !existingHashes.has(hash),
@@ -185,7 +188,30 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       const fileCategory = mapping.categoryColumn
         ? get(row, mapping.categoryColumn)
         : undefined;
-      const st = toStaged(dateISO, signed, description, fileCategory);
+
+      // Conto o Carta: se la colonna "Conto o carta" è vuota, è un movimento
+      // della carta prepagata; altrimenti è del conto.
+      let paymentMethod: string | undefined;
+      if (mapping.accountColumn) {
+        paymentMethod = get(row, mapping.accountColumn).trim()
+          ? 'Conto corrente'
+          : 'Carta prepagata';
+      }
+
+      // Giroconto: le ricariche della carta prepagata (uscita dal conto e
+      // relativo accredito sulla carta) non sono spese/entrate reali.
+      const op = get(row, mapping.descriptionColumn).trim().toLowerCase();
+      const catText = (fileCategory || '').toLowerCase();
+      const transfer =
+        op === 'ricarica' ||
+        op.includes('ricarica carta prepagata') ||
+        catText.includes('ricarica cart');
+
+      const st = toStaged(dateISO, signed, description, {
+        fileCategory,
+        paymentMethod,
+        transfer,
+      });
       // Duplicato anche all'interno dello stesso file.
       if (seenInFile.has(st.dedupHash)) {
         st.duplicate = true;
@@ -247,8 +273,9 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
         type: s.type,
         description: s.description,
         categoryId,
-        paymentMethod: origin.trim() || 'Banca',
+        paymentMethod: s.paymentMethod || origin.trim() || 'Banca',
         notes: '',
+        excludeFromTotals: s.excludeFromTotals,
         source: 'import',
         dedupHash: s.dedupHash,
         createdAt: Date.now(),
@@ -275,6 +302,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
       descriptionColumn: p.descriptionColumn,
       detailsColumn: p.detailsColumn ?? '',
       categoryColumn: p.categoryColumn ?? '',
+      accountColumn: p.accountColumn ?? '',
       debitColumn: p.debitColumn ?? '',
       creditColumn: p.creditColumn ?? '',
       dateFormat: p.dateFormat,
@@ -397,6 +425,20 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
               onChange={(v) => setMapping((m) => ({ ...m, categoryColumn: v }))}
             />
             <ColumnSelect
+              label="Colonna Conto/Carta (facoltativa)"
+              columns={tabular.columns}
+              value={mapping.accountColumn || ''}
+              onChange={(v) => setMapping((m) => ({ ...m, accountColumn: v }))}
+            />
+            {mapping.accountColumn && (
+              <p className="text-xs text-slate-500 sm:col-span-2">
+                Con la colonna Conto/Carta: le righe con il conto valorizzato sono
+                del <strong>conto</strong>, quelle vuote della <strong>carta</strong>.
+                Le <strong>ricariche della carta</strong> vengono segnate come
+                giroconto e non contano nei totali (così non si sommano due volte).
+              </p>
+            )}
+            <ColumnSelect
               label="Colonna Importo (con segno)"
               columns={tabular.columns}
               value={mapping.amountColumn}
@@ -499,6 +541,7 @@ function autoGuessColumns(columns: string[]): Partial<Omit<ImportProfile, 'id' |
   );
   if (details) guess.detailsColumn = details;
   guess.categoryColumn = find(['categoria', 'category']);
+  guess.accountColumn = find(['conto o carta', 'conto/carta', 'conto', 'carta', 'account']);
   return guess;
 }
 
@@ -647,6 +690,14 @@ function PreviewStep({
                 </td>
                 <td className="px-3 py-2">
                   {s.description}
+                  {s.paymentMethod === 'Carta prepagata' && (
+                    <span className="badge ml-2 bg-violet-100 text-violet-700">carta</span>
+                  )}
+                  {s.excludeFromTotals && (
+                    <span className="badge ml-2 bg-slate-200 text-slate-600">
+                      giroconto · non contato
+                    </span>
+                  )}
                   {s.duplicate && (
                     <span className="badge ml-2 bg-amber-100 text-amber-700">duplicato</span>
                   )}

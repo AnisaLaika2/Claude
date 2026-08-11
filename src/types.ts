@@ -14,6 +14,8 @@ export interface Transaction {
   categoryId: string | null;
   paymentMethod: string;
   notes: string;
+  /** se true è un giroconto/trasferimento: non conta nei totali di spese/entrate */
+  excludeFromTotals?: boolean;
   /** origine del movimento */
   source: 'manual' | 'import' | 'recurring';
   /** hash usato per il rilevamento dei duplicati in importazione */
@@ -67,6 +69,8 @@ export interface ImportProfile {
   detailsColumn?: string;
   /** colonna con la categoria della banca (opzionale) */
   categoryColumn?: string;
+  /** colonna "Conto o carta": se vuota, il movimento è della carta (opzionale) */
+  accountColumn?: string;
   /** colonna importo uscite separata (opzionale, alcune banche la usano) */
   debitColumn?: string;
   creditColumn?: string;
@@ -91,6 +95,10 @@ export interface StagedTransaction {
   categoryId: string | null;
   /** nome categoria letto dal file, da creare/associare in fase di import */
   fileCategory?: string;
+  /** metodo/origine per questa riga (Conto o Carta), se rilevato dal file */
+  paymentMethod?: string;
+  /** giroconto (ricarica carta): escluso dai totali */
+  excludeFromTotals?: boolean;
   dedupHash: string;
   duplicate: boolean;
   selected: boolean;

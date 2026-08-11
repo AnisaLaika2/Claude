@@ -2,6 +2,11 @@
 
 import type { Category, Transaction } from '../types';
 
+/** Esclude i giroconti (ricariche carta ecc.) dai conteggi. */
+export function countable(txs: Transaction[]): Transaction[] {
+  return txs.filter((t) => !t.excludeFromTotals);
+}
+
 export function filterByMonth(txs: Transaction[], ym: string): Transaction[] {
   return txs.filter((t) => t.date.startsWith(ym));
 }
@@ -13,7 +18,7 @@ export function totals(txs: Transaction[]): {
 } {
   let income = 0;
   let expense = 0;
-  for (const t of txs) {
+  for (const t of countable(txs)) {
     if (t.type === 'income') income += t.amount;
     else expense += t.amount;
   }
@@ -32,7 +37,7 @@ export function expenseByCategory(
   categories: Category[],
 ): CategorySlice[] {
   const map = new Map<string | null, number>();
-  for (const t of txs) {
+  for (const t of countable(txs)) {
     if (t.type !== 'expense') continue;
     map.set(t.categoryId, (map.get(t.categoryId) ?? 0) + t.amount);
   }
@@ -67,7 +72,7 @@ export function monthlyTrend(txs: Transaction[], months: number): MonthPoint[] {
     points.push(p);
     index.set(ym, p);
   }
-  for (const t of txs) {
+  for (const t of countable(txs)) {
     const ym = t.date.slice(0, 7);
     const p = index.get(ym);
     if (!p) continue;
@@ -89,7 +94,7 @@ export function budgetStatus(
   categories: Category[],
 ): BudgetStatus[] {
   const spentByCat = new Map<string, number>();
-  for (const t of monthTxs) {
+  for (const t of countable(monthTxs)) {
     if (t.type !== 'expense' || !t.categoryId) continue;
     spentByCat.set(t.categoryId, (spentByCat.get(t.categoryId) ?? 0) + t.amount);
   }

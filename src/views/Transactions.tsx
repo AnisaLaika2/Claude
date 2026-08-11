@@ -33,6 +33,14 @@ export default function Transactions() {
   const [search, setSearch] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
   const [catFilter, setCatFilter] = useState('all');
+  const [methodFilter, setMethodFilter] = useState('all');
+
+  const methods = useMemo(() => {
+    const set = new Set(
+      transactions.map((t) => t.paymentMethod).filter(Boolean) as string[],
+    );
+    return Array.from(set).sort();
+  }, [transactions]);
 
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -54,13 +62,14 @@ export default function Transactions() {
             ? t.categoryId === null
             : t.categoryId === catFilter,
       )
+      .filter((t) => (methodFilter === 'all' ? true : t.paymentMethod === methodFilter))
       .filter((t) =>
         search.trim()
           ? t.description.toLowerCase().includes(search.toLowerCase())
           : true,
       )
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
-  }, [transactions, monthFilter, catFilter, search]);
+  }, [transactions, monthFilter, catFilter, methodFilter, search]);
 
   async function onSave(t: Transaction) {
     const toSave: Transaction = {
@@ -108,7 +117,7 @@ export default function Transactions() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <input
           className="input"
           placeholder="Cerca descrizione…"
@@ -140,6 +149,20 @@ export default function Transactions() {
             </option>
           ))}
         </select>
+        {methods.length > 0 && (
+          <select
+            className="input"
+            value={methodFilter}
+            onChange={(e) => setMethodFilter(e.target.value)}
+          >
+            <option value="all">Conto e Carta</option>
+            {methods.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -163,7 +186,14 @@ export default function Transactions() {
                     {formatDate(t.date)}
                   </td>
                   <td className="px-3 py-2">
-                    <div className="font-medium text-slate-800">{t.description}</div>
+                    <div className="font-medium text-slate-800">
+                      {t.description}
+                      {t.excludeFromTotals && (
+                        <span className="badge ml-2 bg-slate-200 text-slate-600">
+                          giroconto
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-slate-400">
                       {t.paymentMethod}
                       {t.source !== 'manual' && ` · ${t.source === 'import' ? 'importato' : 'ricorrente'}`}
@@ -187,7 +217,11 @@ export default function Transactions() {
                   </td>
                   <td
                     className={`whitespace-nowrap px-3 py-2 text-right font-semibold ${
-                      t.type === 'income' ? 'text-emerald-600' : 'text-slate-800'
+                      t.excludeFromTotals
+                        ? 'text-slate-400 line-through'
+                        : t.type === 'income'
+                          ? 'text-emerald-600'
+                          : 'text-slate-800'
                     }`}
                   >
                     {t.type === 'income' ? '+' : '−'}
@@ -350,6 +384,20 @@ function TransactionForm({
             onChange={(e) => set('notes', e.target.value)}
           />
         </div>
+
+        <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={!!form.excludeFromTotals}
+            onChange={(e) => set('excludeFromTotals', e.target.checked)}
+          />
+          <span>
+            <span className="font-medium text-slate-700">Giroconto</span> — non contare
+            nei totali (es. ricarica della carta: sposta soldi tra conto e carta, non è
+            una spesa reale).
+          </span>
+        </label>
 
         <div className="flex justify-end gap-2 pt-2">
           <button className="btn-secondary" onClick={onCancel}>
