@@ -20,7 +20,8 @@ import {
   todayISO,
   uid,
 } from '../lib/format';
-import type { Account, Recurring, Transaction } from '../types';
+import type { Account, PlannedExpense, Recurring, Transaction } from '../types';
+import { monthsUntil } from './Planned';
 import {
   BUDGET_WARN_RATIO,
   accountBalance,
@@ -46,6 +47,7 @@ export default function Dashboard({
     groups,
     accounts,
     recurring,
+    planned,
     saveAccount,
     removeAccount,
   } = useData();
@@ -145,6 +147,9 @@ export default function Dashboard({
         accountsTotal={accounts.reduce((s, a) => s + accountBalance(a, transactions), 0)}
         hasAccounts={accounts.length > 0}
       />
+
+      {/* Spese future in programma (bollo, assicurazione…) */}
+      <PlannedCard planned={planned} />
 
       {/* Avvisi budget */}
       {alerts.length > 0 && (
@@ -555,6 +560,56 @@ function ForecastCard({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function PlannedCard({ planned }: { planned: PlannedExpense[] }) {
+  const upcoming = planned
+    .filter((p) => !p.paid)
+    .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
+  if (upcoming.length === 0) return null;
+
+  const totalDue = upcoming.reduce((s, p) => s + p.amount, 0);
+  const totalMonthly = upcoming.reduce((s, p) => {
+    const m = monthsUntil(p.dueDate);
+    return s + (m > 0 ? p.amount / m : 0);
+  }, 0);
+
+  return (
+    <div className="card p-4">
+      <h3 className="mb-1 font-semibold text-slate-700">📅 Spese in programma</h3>
+      <p className="mb-3 text-xs text-slate-400">
+        Spese future con scadenza — mettine da parte un po’ ogni mese.
+      </p>
+
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Totale in arrivo</p>
+          <p className="text-lg font-bold text-slate-800">{formatCurrency(totalDue)}</p>
+        </div>
+        <div className="rounded-lg bg-brand-50 p-3">
+          <p className="text-xs text-brand-700">Da accantonare/mese</p>
+          <p className="text-lg font-bold text-brand-700">{formatCurrency(totalMonthly)}</p>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {upcoming.slice(0, 6).map((p) => {
+          const m = monthsUntil(p.dueDate);
+          return (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <span className="text-slate-600">
+                {p.description}
+                <span className="ml-2 text-xs text-slate-400">
+                  {m === 0 ? 'scaduta' : `tra ${m} ${m === 1 ? 'mese' : 'mesi'}`}
+                </span>
+              </span>
+              <span className="font-medium text-slate-800">{formatCurrency(p.amount)}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

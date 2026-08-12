@@ -79,6 +79,19 @@ export interface Recurring {
   active: boolean;
 }
 
+/** Spesa futura una-tantum con una scadenza (bollo, assicurazione, condominio...). */
+export interface PlannedExpense {
+  id: string;
+  description: string;
+  amount: number;
+  /** data entro cui va pagata (yyyy-mm-dd) */
+  dueDate: string;
+  categoryId?: string | null;
+  /** già pagata: esce dalle previsioni */
+  paid?: boolean;
+  notes?: string;
+}
+
 /** Profilo di mappatura colonne salvato per una banca. */
 export interface ImportProfile {
   id: string;

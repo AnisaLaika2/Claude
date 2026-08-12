@@ -6,6 +6,7 @@ import type {
   Account,
   Category,
   CategoryGroup,
+  PlannedExpense,
   Recurring,
   Transaction,
 } from '../types';
@@ -19,6 +20,7 @@ export interface AssistantContext {
   groups: CategoryGroup[];
   accounts: Account[];
   recurring: Recurring[];
+  planned: PlannedExpense[];
 }
 
 export interface AssistantAnswer {
@@ -369,6 +371,42 @@ function recurringAnswer(ctx: AssistantContext): AssistantAnswer {
   };
 }
 
+function plannedMonthsUntil(due: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const [y, m, d] = due.split('-').map(Number);
+  const ms = new Date(y, m - 1, d).getTime() - now.getTime();
+  if (ms <= 0) return 0;
+  return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 30.44)));
+}
+
+function plannedAnswer(ctx: AssistantContext): AssistantAnswer {
+  const up = ctx.planned
+    .filter((p) => !p.paid)
+    .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1));
+  if (up.length === 0) {
+    return {
+      text: 'Non hai spese in programma. Aggiungile nella sezione "In programma" (es. bollo, assicurazione, condominio).',
+    };
+  }
+  const total = up.reduce((s, p) => s + p.amount, 0);
+  const monthly = up.reduce((s, p) => {
+    const m = plannedMonthsUntil(p.dueDate);
+    return s + (m > 0 ? p.amount / m : 0);
+  }, 0);
+  return {
+    text: `Hai ${formatCurrency(total)} di spese in programma. Per arrivarci pronta metti da parte circa ${formatCurrency(monthly)} al mese.`,
+    stats: [
+      { label: 'Totale in arrivo', value: formatCurrency(total) },
+      { label: 'Da accantonare/mese', value: formatCurrency(monthly) },
+    ],
+    list: up.map((p) => ({
+      label: `${p.description} (entro ${p.dueDate})`,
+      value: formatCurrency(p.amount),
+    })),
+  };
+}
+
 function help(): AssistantAnswer {
   return {
     text: [
@@ -397,6 +435,8 @@ export function runAssistant(query: string, ctx: AssistantContext): AssistantAns
     return scenarioAnswer(ctx, q);
   }
   if (/saldo|in banca|sul conto/.test(q)) return balanceAnswer(ctx);
+  if (/in programma|spese future|future|accantonar|da pagare entro|scadenz|bollo|assicurazion|condominio/.test(q))
+    return plannedAnswer(ctx);
   if (/spese fisse|ricorrent|abbonament|fiss[ao]/.test(q)) return recurringAnswer(ctx);
   if (/speso|spesa|spese|pagato|pago|costa|quanto/.test(q)) return spendAnswer(ctx, q);
 

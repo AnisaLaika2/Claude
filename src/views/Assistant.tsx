@@ -18,7 +18,7 @@ const SUGGESTIONS = [
 ];
 
 export default function Assistant() {
-  const { transactions, categories, groups, accounts, recurring } = useData();
+  const { transactions, categories, groups, accounts, recurring, planned } = useData();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
@@ -26,7 +26,14 @@ export default function Assistant() {
   function ask(text: string) {
     const q = text.trim();
     if (!q) return;
-    const answer = runAssistant(q, { transactions, categories, groups, accounts, recurring });
+    const answer = runAssistant(q, {
+      transactions,
+      categories,
+      groups,
+      accounts,
+      recurring,
+      planned,
+    });
     setMessages((m) => [...m, { role: 'user', text: q }, { role: 'assistant', answer }]);
     setInput('');
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
