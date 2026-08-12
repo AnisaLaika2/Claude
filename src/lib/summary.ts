@@ -136,6 +136,34 @@ export function expenseByGroup(
   return slices.sort((a, b) => b.value - a.value);
 }
 
+/** Spese del periodo per le sotto-categorie di un gruppo (macro-categoria). */
+export function expenseByCategoryInGroup(
+  txs: Transaction[],
+  categories: Category[],
+  groupId: string,
+): GroupSlice[] {
+  const inGroup = new Map(
+    categories.filter((c) => c.groupId === groupId).map((c) => [c.id, c]),
+  );
+  const map = new Map<string, number>();
+  for (const t of countable(txs)) {
+    if (t.type !== 'expense' || !t.categoryId) continue;
+    if (!inGroup.has(t.categoryId)) continue;
+    map.set(t.categoryId, (map.get(t.categoryId) ?? 0) + t.amount);
+  }
+  const slices: GroupSlice[] = [];
+  for (const [cid, value] of map) {
+    const c = inGroup.get(cid);
+    slices.push({
+      id: cid,
+      name: c?.name ?? 'Categoria',
+      color: c?.color ?? '#94a3b8',
+      value,
+    });
+  }
+  return slices.sort((a, b) => b.value - a.value);
+}
+
 export interface MonthPoint {
   month: string; // yyyy-mm
   income: number;

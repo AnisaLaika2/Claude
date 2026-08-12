@@ -35,7 +35,7 @@ import {
   budgetOverview,
   budgetStatus,
   currentWeekRange,
-  expenseByCategory,
+  expenseByCategoryInGroup,
   expenseByGroup,
   filterByMonth,
   filterByRange,
@@ -75,13 +75,19 @@ export default function Dashboard({
     [transactions, month],
   );
   const t = useMemo(() => totals(monthTxs), [monthTxs]);
-  const slices = useMemo(
-    () => expenseByCategory(monthTxs, categories),
-    [monthTxs, categories],
-  );
   const groupSlices = useMemo(
     () => expenseByGroup(monthTxs, categories, groups),
     [monthTxs, categories, groups],
+  );
+  // Drill-down del grafico a torta: macro-categoria selezionata → sotto-categorie.
+  const [drillGroup, setDrillGroup] = useState<string | null>(null);
+  useEffect(() => {
+    setDrillGroup(null);
+  }, [month]);
+  const expenseGroups = useMemo(() => groups.filter((g) => g.type === 'expense'), [groups]);
+  const subSlices = useMemo(
+    () => (drillGroup ? expenseByCategoryInGroup(monthTxs, categories, drillGroup) : []),
+    [drillGroup, monthTxs, categories],
   );
   const trend = useMemo(() => monthlyTrend(transactions, 6), [transactions]);
   const budgets = useMemo(
@@ -372,32 +378,103 @@ export default function Dashboard({
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="card p-4">
-          <h3 className="mb-3 font-semibold text-slate-700">
-            Spese per categoria (dettaglio)
-          </h3>
-          {slices.length === 0 ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-semibold text-slate-700">
+              {drillGroup
+                ? `Dettaglio: ${expenseGroups.find((g) => g.id === drillGroup)?.name ?? ''}`
+                : 'Spese per macro-categoria'}
+            </h3>
+            <select
+              className="input !w-auto !py-1 !text-xs"
+              value={drillGroup ?? ''}
+              onChange={(e) => setDrillGroup(e.target.value || null)}
+            >
+              <option value="">Tutte le macro-categorie</option>
+              {expenseGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {drillGroup ? (
+            subSlices.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-slate-400">
+                  Nessuna spesa in questo gruppo nel mese.
+                </p>
+                <button
+                  className="btn-ghost mt-2 text-brand-700"
+                  onClick={() => setDrillGroup(null)}
+                >
+                  ← Tutte le macro-categorie
+                </button>
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={subSlices}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={95}
+                      label={(e) => e.name}
+                    >
+                      {subSlices.map((s) => (
+                        <Cell key={s.id} fill={s.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <button
+                  className="btn-ghost text-brand-700"
+                  onClick={() => setDrillGroup(null)}
+                >
+                  ← Tutte le macro-categorie
+                </button>
+              </>
+            )
+          ) : groupSlices.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-400">
               Nessuna spesa in questo mese.
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={slices}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={(e) => e.name}
-                >
-                  {slices.map((s) => (
-                    <Cell key={s.categoryId ?? 'none'} fill={s.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={groupSlices}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={95}
+                    label={(e) => e.name}
+                    onClick={(_, index) => {
+                      const s = groupSlices[index];
+                      if (s && s.id !== '__none__') setDrillGroup(s.id);
+                    }}
+                  >
+                    {groupSlices.map((s) => (
+                      <Cell
+                        key={s.id}
+                        fill={s.color}
+                        cursor={s.id !== '__none__' ? 'pointer' : 'default'}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <p className="mt-1 text-center text-xs text-slate-400">
+                Tocca una fetta (o usa il menù) per vedere le sotto-categorie.
+              </p>
+            </>
           )}
         </div>
 
