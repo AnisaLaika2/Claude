@@ -18,7 +18,8 @@ const SUGGESTIONS = [
 ];
 
 export default function Assistant() {
-  const { transactions, categories, groups, accounts, recurring, planned } = useData();
+  const { transactions, categories, groups, accounts, recurring, planned, savings } =
+    useData();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
@@ -33,6 +34,7 @@ export default function Assistant() {
       accounts,
       recurring,
       planned,
+      savings,
     });
     setMessages((m) => [...m, { role: 'user', text: q }, { role: 'assistant', answer }]);
     setInput('');

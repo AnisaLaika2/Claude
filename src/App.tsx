@@ -7,6 +7,7 @@ import Categories from './views/Categories';
 import Rules from './views/Rules';
 import RecurringView from './views/Recurring';
 import Planned from './views/Planned';
+import Savings from './views/Savings';
 import Settings from './views/Settings';
 import Assistant from './views/Assistant';
 
@@ -19,6 +20,7 @@ type View =
   | 'rules'
   | 'recurring'
   | 'planned'
+  | 'savings'
   | 'settings';
 
 const NAV: { id: View; label: string; icon: string }[] = [
@@ -30,6 +32,7 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'rules', label: 'Regole', icon: '⚙️' },
   { id: 'recurring', label: 'Ricorrenti', icon: '🔁' },
   { id: 'planned', label: 'In programma', icon: '📅' },
+  { id: 'savings', label: 'Risparmi', icon: '🎯' },
   { id: 'settings', label: 'Backup', icon: '💾' },
 ];
 
@@ -95,6 +98,7 @@ export default function App() {
         {view === 'rules' && <Rules />}
         {view === 'recurring' && <RecurringView />}
         {view === 'planned' && <Planned />}
+        {view === 'savings' && <Savings />}
         {view === 'settings' && <Settings />}
       </main>
 

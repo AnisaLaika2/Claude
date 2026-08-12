@@ -10,6 +10,7 @@ import type {
   PlannedExpense,
   Recurring,
   Rule,
+  SavingsGoal,
   Transaction,
 } from '../types';
 import { uid } from '../lib/format';
@@ -20,13 +21,14 @@ interface SpeseDB extends DBSchema {
   groups: { key: string; value: CategoryGroup };
   accounts: { key: string; value: Account };
   planned: { key: string; value: PlannedExpense };
+  savings: { key: string; value: SavingsGoal };
   rules: { key: string; value: Rule };
   recurring: { key: string; value: Recurring };
   profiles: { key: string; value: ImportProfile };
 }
 
 const DB_NAME = 'gestione-spese';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let dbPromise: Promise<IDBPDatabase<SpeseDB>> | null = null;
 
@@ -50,6 +52,9 @@ function getDB(): Promise<IDBPDatabase<SpeseDB>> {
         }
         if (!db.objectStoreNames.contains('planned')) {
           db.createObjectStore('planned', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('savings')) {
+          db.createObjectStore('savings', { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains('rules')) {
           db.createObjectStore('rules', { keyPath: 'id' });
@@ -230,6 +235,20 @@ export async function deletePlanned(id: string): Promise<void> {
   await db.delete('planned', id);
 }
 
+// ---- Obiettivi di risparmio ----
+export async function getSavings(): Promise<SavingsGoal[]> {
+  const db = await getDB();
+  return db.getAll('savings');
+}
+export async function putSavings(g: SavingsGoal): Promise<void> {
+  const db = await getDB();
+  await db.put('savings', g);
+}
+export async function deleteSavings(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('savings', id);
+}
+
 // ---- Regole ----
 export async function getRules(): Promise<Rule[]> {
   const db = await getDB();
@@ -281,19 +300,21 @@ export interface BackupData {
   groups?: CategoryGroup[];
   accounts?: Account[];
   planned?: PlannedExpense[];
+  savings?: SavingsGoal[];
   rules: Rule[];
   recurring: Recurring[];
   profiles: ImportProfile[];
 }
 
 export async function exportAll(): Promise<BackupData> {
-  const [transactions, categories, groups, accounts, planned, rules, recurring, profiles] =
+  const [transactions, categories, groups, accounts, planned, savings, rules, recurring, profiles] =
     await Promise.all([
       getTransactions(),
       getCategories(),
       getGroups(),
       getAccounts(),
       getPlanned(),
+      getSavings(),
       getRules(),
       getRecurring(),
       getProfiles(),
@@ -306,6 +327,7 @@ export async function exportAll(): Promise<BackupData> {
     groups,
     accounts,
     planned,
+    savings,
     rules,
     recurring,
     profiles,
@@ -314,7 +336,7 @@ export async function exportAll(): Promise<BackupData> {
 
 export async function importAll(data: BackupData): Promise<void> {
   const db = await getDB();
-  const stores = ['transactions', 'categories', 'groups', 'accounts', 'planned', 'rules', 'recurring', 'profiles'] as const;
+  const stores = ['transactions', 'categories', 'groups', 'accounts', 'planned', 'savings', 'rules', 'recurring', 'profiles'] as const;
   const tx = db.transaction(stores, 'readwrite');
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
   for (const t of data.transactions ?? []) await tx.objectStore('transactions').put(t);
@@ -322,6 +344,7 @@ export async function importAll(data: BackupData): Promise<void> {
   for (const g of data.groups ?? []) await tx.objectStore('groups').put(g);
   for (const a of data.accounts ?? []) await tx.objectStore('accounts').put(a);
   for (const p of data.planned ?? []) await tx.objectStore('planned').put(p);
+  for (const s of data.savings ?? []) await tx.objectStore('savings').put(s);
   for (const r of data.rules ?? []) await tx.objectStore('rules').put(r);
   for (const r of data.recurring ?? []) await tx.objectStore('recurring').put(r);
   for (const p of data.profiles ?? []) await tx.objectStore('profiles').put(p);

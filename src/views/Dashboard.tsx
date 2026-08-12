@@ -20,7 +20,13 @@ import {
   todayISO,
   uid,
 } from '../lib/format';
-import type { Account, PlannedExpense, Recurring, Transaction } from '../types';
+import type {
+  Account,
+  PlannedExpense,
+  Recurring,
+  SavingsGoal,
+  Transaction,
+} from '../types';
 import { monthsUntil } from './Planned';
 import {
   BUDGET_WARN_RATIO,
@@ -48,6 +54,7 @@ export default function Dashboard({
     accounts,
     recurring,
     planned,
+    savings,
     saveAccount,
     removeAccount,
   } = useData();
@@ -150,6 +157,9 @@ export default function Dashboard({
 
       {/* Spese future in programma (bollo, assicurazione…) */}
       <PlannedCard planned={planned} />
+
+      {/* Obiettivi di risparmio */}
+      <SavingsCard savings={savings} />
 
       {/* Avvisi budget */}
       {alerts.length > 0 && (
@@ -560,6 +570,47 @@ function ForecastCard({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function SavingsCard({ savings }: { savings: SavingsGoal[] }) {
+  if (savings.length === 0) return null;
+  const goals = savings.slice().sort((a, b) => (a.targetDate < b.targetDate ? -1 : 1));
+
+  return (
+    <div className="card p-4">
+      <h3 className="mb-3 font-semibold text-slate-700">🎯 Obiettivi di risparmio</h3>
+      <div className="space-y-3">
+        {goals.map((g) => {
+          const remaining = Math.max(0, g.targetAmount - g.savedAmount);
+          const pct = Math.min(g.targetAmount ? (g.savedAmount / g.targetAmount) * 100 : 0, 100);
+          const reached = g.savedAmount >= g.targetAmount;
+          const m = monthsUntil(g.targetDate);
+          const monthly = reached ? 0 : m > 0 ? remaining / m : remaining;
+          return (
+            <div key={g.id}>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-700">{g.name}</span>
+                <span className="text-slate-500">
+                  {formatCurrency(g.savedAmount)} / {formatCurrency(g.targetAmount)}
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full ${reached ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="mt-0.5 text-right text-xs text-slate-400">
+                {reached
+                  ? 'obiettivo raggiunto 🎉'
+                  : `metti da parte ${formatCurrency(monthly)}/mese`}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

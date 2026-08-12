@@ -92,6 +92,18 @@ export interface PlannedExpense {
   notes?: string;
 }
 
+/** Obiettivo di risparmio: metti da parte fino a una certa cifra entro una data. */
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  /** data entro cui raggiungere l'obiettivo (yyyy-mm-dd) */
+  targetDate: string;
+  /** quanto è già stato accantonato */
+  savedAmount: number;
+  notes?: string;
+}
+
 /** Profilo di mappatura colonne salvato per una banca. */
 export interface ImportProfile {
   id: string;

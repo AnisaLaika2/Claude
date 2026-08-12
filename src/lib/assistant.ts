@@ -8,6 +8,7 @@ import type {
   CategoryGroup,
   PlannedExpense,
   Recurring,
+  SavingsGoal,
   Transaction,
 } from '../types';
 import { formatCurrency } from './format';
@@ -21,6 +22,7 @@ export interface AssistantContext {
   accounts: Account[];
   recurring: Recurring[];
   planned: PlannedExpense[];
+  savings: SavingsGoal[];
 }
 
 export interface AssistantAnswer {
@@ -407,6 +409,34 @@ function plannedAnswer(ctx: AssistantContext): AssistantAnswer {
   };
 }
 
+function savingsAnswer(ctx: AssistantContext): AssistantAnswer {
+  const goals = ctx.savings
+    .slice()
+    .sort((a, b) => (a.targetDate < b.targetDate ? -1 : 1));
+  if (goals.length === 0) {
+    return {
+      text: 'Non hai obiettivi di risparmio. Creane uno nella sezione "Risparmi" (es. 2.000€ entro dicembre).',
+    };
+  }
+  let totalMonthly = 0;
+  const list = goals.map((g) => {
+    const remaining = Math.max(0, g.targetAmount - g.savedAmount);
+    const reached = g.savedAmount >= g.targetAmount;
+    const m = plannedMonthsUntil(g.targetDate);
+    const monthly = reached ? 0 : m > 0 ? remaining / m : remaining;
+    totalMonthly += monthly;
+    return {
+      label: `${g.name} · ${formatCurrency(g.savedAmount)}/${formatCurrency(g.targetAmount)}`,
+      value: reached ? 'raggiunto 🎉' : `${formatCurrency(monthly)}/mese`,
+    };
+  });
+  return {
+    text: `Per raggiungere i tuoi obiettivi metti da parte circa ${formatCurrency(totalMonthly)} al mese in totale.`,
+    stats: [{ label: 'Da risparmiare/mese', value: formatCurrency(totalMonthly) }],
+    list,
+  };
+}
+
 function help(): AssistantAnswer {
   return {
     text: [
@@ -425,6 +455,9 @@ export function runAssistant(query: string, ctx: AssistantContext): AssistantAns
   const q = ' ' + query.toLowerCase().trim() + ' ';
   if (!query.trim()) return help();
 
+  if (/obiettiv|traguard|\brisparmi\b|\brisparmio\b|metto da parte|mettere da parte|quanto devo risparmi/.test(q)) {
+    return savingsAnswer(ctx);
+  }
   if (/risparmi|tagli|dove spendo|spendo di piu|spendo di più|come posso|consigl|ridurre|dove devo|meno soldi/.test(q)) {
     return adviceAnswer(ctx, q);
   }
