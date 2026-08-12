@@ -7,6 +7,8 @@ import {
   notificationsEnabled,
   setNotificationsEnabled,
   requestNotificationPermission,
+  weeklyReminderEnabled,
+  setWeeklyReminderEnabled,
 } from '../lib/notify';
 import Papa from 'papaparse';
 
@@ -15,6 +17,18 @@ export default function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
   const [notif, setNotif] = useState(notificationsEnabled());
+  const [weekly, setWeekly] = useState(weeklyReminderEnabled());
+
+  async function toggleWeekly(on: boolean) {
+    if (on) await requestNotificationPermission();
+    setWeekly(on);
+    setWeeklyReminderEnabled(on);
+    setMsg(
+      on
+        ? 'Promemoria settimanale attivato: all’apertura dell’app a inizio settimana ti ricorderò di importare le spese.'
+        : 'Promemoria settimanale disattivato.',
+    );
+  }
 
   async function toggleNotifications(on: boolean) {
     if (on) {
@@ -135,6 +149,15 @@ export default function Settings() {
             funzionano solo con l’app aggiunta alla schermata Home.
           </p>
         )}
+
+        <label className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={weekly}
+            onChange={(e) => toggleWeekly(e.target.checked)}
+          />
+          Promemoria settimanale per importare le spese (a inizio settimana)
+        </label>
       </div>
 
       <div className="card p-4">

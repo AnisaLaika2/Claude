@@ -90,7 +90,12 @@ export default function App() {
       </header>
 
       <main className="flex-1 p-4">
-        {view === 'dashboard' && <Dashboard onOpenTransactions={openTransactions} />}
+        {view === 'dashboard' && (
+          <Dashboard
+            onOpenTransactions={openTransactions}
+            onGoImport={() => setView('import')}
+          />
+        )}
         {view === 'assistant' && <Assistant />}
         {view === 'transactions' && <Transactions applyFilter={txFilter} />}
         {view === 'import' && <ImportWizard onDone={() => setView('transactions')} />}

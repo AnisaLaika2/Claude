@@ -30,22 +30,32 @@ import type {
 import { monthsUntil } from './Planned';
 import {
   BUDGET_WARN_RATIO,
+  WEEK_FACTOR,
   accountBalance,
   budgetOverview,
   budgetStatus,
+  currentWeekRange,
   expenseByCategory,
   expenseByGroup,
   filterByMonth,
+  filterByRange,
   monthlyTrend,
   totals,
 } from '../lib/summary';
 import { parseAmount } from '../lib/parse-values';
-import { notificationsEnabled, showNotification } from '../lib/notify';
+import {
+  notificationsEnabled,
+  showNotification,
+  importReminderDue,
+  markImportReminded,
+} from '../lib/notify';
 
 export default function Dashboard({
   onOpenTransactions,
+  onGoImport,
 }: {
   onOpenTransactions: (cat: string, month: string) => void;
+  onGoImport: () => void;
 }) {
   const {
     transactions,
@@ -78,11 +88,35 @@ export default function Dashboard({
     () => budgetStatus(monthTxs, categories, groups),
     [monthTxs, categories, groups],
   );
-  const overview = useMemo(() => budgetOverview(budgets), [budgets]);
   const alerts = useMemo(
     () => budgets.filter((b) => b.ratio >= BUDGET_WARN_RATIO),
     [budgets],
   );
+
+  // Budget settimanale (settimana corrente lun–dom, budget mensile in proporzione).
+  const [budgetPeriod, setBudgetPeriod] = useState<'month' | 'week'>('month');
+  const week = useMemo(() => currentWeekRange(), []);
+  const weekBudgets = useMemo(
+    () => budgetStatus(filterByRange(transactions, week.from, week.to), categories, groups, WEEK_FACTOR),
+    [transactions, week, categories, groups],
+  );
+  const shownBudgets = budgetPeriod === 'week' ? weekBudgets : budgets;
+  const overview = useMemo(() => budgetOverview(shownBudgets), [shownBudgets]);
+
+  // Promemoria settimanale di importazione (una volta a settimana).
+  const [reminder, setReminder] = useState(false);
+  useEffect(() => {
+    if (importReminderDue()) {
+      setReminder(true);
+      if (notificationsEnabled()) {
+        showNotification(
+          '🗓️ Promemoria settimanale',
+          'Ricordati di importare le spese della settimana.',
+        );
+      }
+      markImportReminded();
+    }
+  }, []);
 
   const months = useMemo(() => {
     const set = new Set<string>(transactions.map((x) => x.date.slice(0, 7)));
@@ -139,6 +173,23 @@ export default function Dashboard({
           ))}
         </select>
       </div>
+
+      {reminder && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm text-brand-800">
+          <span>🗓️</span>
+          <span className="font-medium">È una nuova settimana:</span>
+          <span>ricordati di importare le spese.</span>
+          <button className="btn-primary ml-auto !px-3 !py-1" onClick={onGoImport}>
+            Importa ora
+          </button>
+          <button
+            className="btn-ghost !px-2 !py-1 text-brand-700"
+            onClick={() => setReminder(false)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Saldo attuale in banca (impostato a mano, aggiornato dai movimenti) */}
       <AccountsCard
@@ -198,11 +249,26 @@ export default function Dashboard({
         />
       </div>
 
-      {/* Budget del mese: pianificato / speso / rimanente */}
+      {/* Budget: pianificato / speso / rimanente (mensile o settimanale) */}
       <div className="card p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-700">Budget del mese</h3>
-          <span className="text-xs text-slate-400">stile "ogni euro ha un compito"</span>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold text-slate-700">
+            {budgetPeriod === 'week' ? 'Budget della settimana' : 'Budget del mese'}
+          </h3>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
+            <button
+              className={`rounded-md px-3 py-1 ${budgetPeriod === 'month' ? 'bg-brand-600 text-white' : 'text-slate-600'}`}
+              onClick={() => setBudgetPeriod('month')}
+            >
+              Mese
+            </button>
+            <button
+              className={`rounded-md px-3 py-1 ${budgetPeriod === 'week' ? 'bg-brand-600 text-white' : 'text-slate-600'}`}
+              onClick={() => setBudgetPeriod('week')}
+            >
+              Settimana
+            </button>
+          </div>
         </div>
 
         {overview.budget === 0 ? (
@@ -212,6 +278,11 @@ export default function Dashboard({
           </p>
         ) : (
           <>
+            {budgetPeriod === 'week' && (
+              <p className="mb-2 text-xs text-slate-400">
+                Budget mensile diviso in settimane · questa settimana
+              </p>
+            )}
             <div className="mb-4 grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-xs text-slate-500">Pianificato</p>
@@ -238,7 +309,7 @@ export default function Dashboard({
             </div>
 
             <div className="space-y-3">
-              {budgets.map((b) => (
+              {shownBudgets.map((b) => (
                 <BudgetBar
                   key={b.group.id}
                   name={b.group.name}

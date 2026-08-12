@@ -29,6 +29,27 @@ export function filterByMonth(txs: Transaction[], ym: string): Transaction[] {
   return txs.filter((t) => t.date.startsWith(ym));
 }
 
+/** Frazione di budget mensile corrispondente a una settimana (media). */
+export const WEEK_FACTOR = 7 / 30.44;
+
+/** Intervallo (lunedì–domenica) della settimana che contiene la data. */
+export function currentWeekRange(today = new Date()): { from: string; to: string } {
+  const d = new Date(today);
+  d.setHours(0, 0, 0, 0);
+  const day = (d.getDay() + 6) % 7; // lunedì = 0
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - day);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (x: Date) =>
+    `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  return { from: fmt(monday), to: fmt(sunday) };
+}
+
+export function filterByRange(txs: Transaction[], from: string, to: string): Transaction[] {
+  return txs.filter((t) => t.date >= from && t.date <= to);
+}
+
 export function totals(txs: Transaction[]): {
   income: number;
   expense: number;
@@ -157,6 +178,7 @@ export function budgetStatus(
   monthTxs: Transaction[],
   categories: Category[],
   groups: CategoryGroup[],
+  budgetFactor = 1,
 ): BudgetStatus[] {
   // Mappa categoria -> gruppo di appartenenza.
   const groupOfCat = new Map<string, string>();
@@ -174,11 +196,12 @@ export function budgetStatus(
     .filter((g) => g.type === 'expense' && g.budget > 0)
     .map((group) => {
       const spent = spentByGroup.get(group.id) ?? 0;
+      const budget = group.budget * budgetFactor;
       return {
         group,
         spent,
-        budget: group.budget,
-        ratio: group.budget ? spent / group.budget : 0,
+        budget,
+        ratio: budget ? spent / budget : 0,
       };
     })
     .sort((a, b) => b.ratio - a.ratio);
