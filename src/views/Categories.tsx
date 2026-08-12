@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useData } from '../store/DataContext';
 import { EmptyState } from '../components/ui';
 import type { Category, CategoryGroup, TxType } from '../types';
@@ -30,6 +30,30 @@ export default function Categories() {
   const expenseCats = categories.filter((c) => c.type === 'expense');
   const incomeCats = categories.filter((c) => c.type === 'income');
   const ungrouped = expenseCats.filter((c) => !c.groupId);
+
+  // Numero di movimenti per categoria (per segnalare e ripulire quelle vuote).
+  const countByCat = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.categoryId) m.set(t.categoryId, (m.get(t.categoryId) ?? 0) + 1);
+    }
+    return m;
+  }, [transactions]);
+  const isEmpty = (id: string) => (countByCat.get(id) ?? 0) === 0;
+  const emptyCats = categories.filter((c) => isEmpty(c.id));
+
+  async function deleteEmpty() {
+    const ids = emptyCats.map((c) => c.id);
+    if (ids.length === 0) return;
+    if (
+      !window.confirm(
+        `Eliminare ${ids.length} categorie senza alcun movimento? Le altre restano invariate.`,
+      )
+    ) {
+      return;
+    }
+    for (const id of ids) await removeCategory(id);
+  }
 
   function addCategory() {
     if (!newCatName.trim()) return;
@@ -73,6 +97,11 @@ export default function Categories() {
           <strong> budget mensile sul gruppo</strong>. Esempio: metti “Generi alimentari”,
           “Ristoranti” e “Bar” nel gruppo <em>Cibo</em> e dai un budget al gruppo.
         </p>
+        {emptyCats.length > 0 && (
+          <button className="btn-secondary mt-3" onClick={deleteEmpty}>
+            🧹 Elimina categorie senza movimenti ({emptyCats.length})
+          </button>
+        )}
       </div>
 
       {/* Aggiunte rapide */}
@@ -159,6 +188,7 @@ export default function Categories() {
                 key={c.id}
                 category={c}
                 groups={expenseGroups}
+                empty={isEmpty(c.id)}
                 onSave={saveCategory}
                 onDelete={() => onDeleteCategory(c)}
               />
@@ -177,6 +207,7 @@ export default function Categories() {
                 key={c.id}
                 category={c}
                 groups={[]}
+                empty={isEmpty(c.id)}
                 onSave={saveCategory}
                 onDelete={() => onDeleteCategory(c)}
               />
@@ -293,11 +324,13 @@ function GroupCard({
 function CategoryRow({
   category,
   groups,
+  empty,
   onSave,
   onDelete,
 }: {
   category: Category;
   groups: CategoryGroup[];
+  empty?: boolean;
   onSave: (c: Category) => void;
   onDelete: () => void;
 }) {
@@ -318,6 +351,9 @@ function CategoryRow({
           onChange={(e) => onSave({ ...category, name: e.target.value })}
           placeholder="Nome categoria"
         />
+        {empty && (
+          <span className="badge shrink-0 bg-slate-100 text-slate-500">vuota</span>
+        )}
         <button
           className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
           onClick={onDelete}
