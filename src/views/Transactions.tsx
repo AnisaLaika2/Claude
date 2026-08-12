@@ -19,10 +19,15 @@ const emptyForm = (): Transaction => ({
   createdAt: Date.now(),
 });
 
-export default function Transactions() {
+export default function Transactions({
+  applyFilter,
+}: {
+  applyFilter?: { cat: string; month: string; nonce: number };
+}) {
   const {
     transactions,
     categories,
+    groups,
     saveTransaction,
     removeTransaction,
     rules,
@@ -34,6 +39,15 @@ export default function Transactions() {
   const [monthFilter, setMonthFilter] = useState('all');
   const [catFilter, setCatFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+
+  // Applica un filtro ricevuto dall'esterno (es. clic su un gruppo del budget).
+  useEffect(() => {
+    if (!applyFilter || applyFilter.nonce === 0) return;
+    setCatFilter(applyFilter.cat);
+    setMonthFilter(applyFilter.month);
+    setMethodFilter('all');
+    setSearch('');
+  }, [applyFilter?.nonce]);
   // Riga per cui è aperto il menù categoria (uno solo alla volta = più leggero).
   const [editCatId, setEditCatId] = useState<string | null>(null);
   // Paginazione: mostra un blocco di righe per volta.
@@ -57,7 +71,20 @@ export default function Transactions() {
     return Array.from(set).sort().reverse();
   }, [transactions]);
 
+  // Insieme delle categorie appartenenti a ciascun gruppo (per il filtro gruppo).
+  const catsOfGroup = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    for (const c of categories) {
+      if (!c.groupId) continue;
+      if (!m.has(c.groupId)) m.set(c.groupId, new Set());
+      m.get(c.groupId)!.add(c.id);
+    }
+    return m;
+  }, [categories]);
+
   const filtered = useMemo(() => {
+    const groupId = catFilter.startsWith('group:') ? catFilter.slice(6) : null;
+    const groupSet = groupId ? catsOfGroup.get(groupId) : null;
     return transactions
       .filter((t) => (monthFilter === 'all' ? true : t.date.startsWith(monthFilter)))
       .filter((t) =>
@@ -65,7 +92,9 @@ export default function Transactions() {
           ? true
           : catFilter === 'none'
             ? t.categoryId === null
-            : t.categoryId === catFilter,
+            : groupSet
+              ? t.categoryId !== null && groupSet.has(t.categoryId)
+              : t.categoryId === catFilter,
       )
       .filter((t) => (methodFilter === 'all' ? true : t.paymentMethod === methodFilter))
       .filter((t) =>
@@ -74,7 +103,7 @@ export default function Transactions() {
           : true,
       )
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt));
-  }, [transactions, monthFilter, catFilter, methodFilter, search]);
+  }, [transactions, monthFilter, catFilter, methodFilter, search, catsOfGroup]);
 
   // Rileva i possibili doppioni: stessa data, stesso importo, stessa descrizione.
   const dupCounts = useMemo(() => {
@@ -176,11 +205,22 @@ export default function Transactions() {
         >
           <option value="all">Tutte le categorie</option>
           <option value="none">Senza categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
+          {groups.length > 0 && (
+            <optgroup label="Gruppi (macro)">
+              {groups.map((g) => (
+                <option key={g.id} value={`group:${g.id}`}>
+                  ▸ {g.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          <optgroup label="Categorie">
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
         </select>
         {methods.length > 0 && (
           <select

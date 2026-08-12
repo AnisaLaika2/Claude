@@ -35,7 +35,11 @@ import {
 import { parseAmount } from '../lib/parse-values';
 import { notificationsEnabled, showNotification } from '../lib/notify';
 
-export default function Dashboard() {
+export default function Dashboard({
+  onOpenTransactions,
+}: {
+  onOpenTransactions: (cat: string, month: string) => void;
+}) {
   const {
     transactions,
     categories,
@@ -227,6 +231,7 @@ export default function Dashboard() {
                   spent={b.spent}
                   budget={b.budget}
                   ratio={b.ratio}
+                  onClick={() => onOpenTransactions(`group:${b.group.id}`, month)}
                 />
               ))}
             </div>
@@ -245,8 +250,17 @@ export default function Dashboard() {
           <div className="space-y-2">
             {groupSlices.map((g) => {
               const pct = totalGroupExpense ? (g.value / totalGroupExpense) * 100 : 0;
+              const clickable = g.id !== '__none__';
               return (
-                <div key={g.id}>
+                <button
+                  key={g.id}
+                  type="button"
+                  disabled={!clickable}
+                  onClick={() => onOpenTransactions(`group:${g.id}`, month)}
+                  className={`block w-full text-left ${
+                    clickable ? 'rounded-lg p-1 hover:bg-slate-50' : ''
+                  }`}
+                >
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       <span className="h-3 w-3 rounded-full" style={{ background: g.color }} />
@@ -254,9 +268,7 @@ export default function Dashboard() {
                     </span>
                     <span className="text-slate-600">
                       {formatCurrency(g.value)}{' '}
-                      <span className="text-xs text-slate-400">
-                        ({Math.round(pct)}%)
-                      </span>
+                      <span className="text-xs text-slate-400">({Math.round(pct)}%)</span>
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -265,7 +277,7 @@ export default function Dashboard() {
                       style={{ width: `${pct}%`, background: g.color }}
                     />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -553,12 +565,14 @@ function BudgetBar({
   spent,
   budget,
   ratio,
+  onClick,
 }: {
   name: string;
   color: string;
   spent: number;
   budget: number;
   ratio: number;
+  onClick?: () => void;
 }) {
   const over = ratio >= 1;
   const near = !over && ratio >= BUDGET_WARN_RATIO;
@@ -567,7 +581,12 @@ function BudgetBar({
   const remaining = budget - spent;
 
   return (
-    <div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full rounded-lg p-1 text-left hover:bg-slate-50"
+      title="Tocca per vedere i movimenti di questo gruppo"
+    >
       <div className="mb-1 flex items-center justify-between text-sm">
         <span className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full" style={{ background: color }} />
@@ -582,11 +601,14 @@ function BudgetBar({
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
       </div>
-      <div className="mt-0.5 text-right text-xs text-slate-400">
-        {remaining >= 0
-          ? `restano ${formatCurrency(remaining)}`
-          : `sforato di ${formatCurrency(-remaining)}`}
+      <div className="mt-0.5 flex justify-between text-xs text-slate-400">
+        <span className="text-brand-600">vedi movimenti →</span>
+        <span>
+          {remaining >= 0
+            ? `restano ${formatCurrency(remaining)}`
+            : `sforato di ${formatCurrency(-remaining)}`}
+        </span>
       </div>
-    </div>
+    </button>
   );
 }

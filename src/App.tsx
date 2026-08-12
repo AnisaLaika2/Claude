@@ -7,18 +7,21 @@ import Categories from './views/Categories';
 import Rules from './views/Rules';
 import RecurringView from './views/Recurring';
 import Settings from './views/Settings';
+import Assistant from './views/Assistant';
 
 type View =
   | 'dashboard'
+  | 'assistant'
+  | 'categories'
   | 'transactions'
   | 'import'
-  | 'categories'
   | 'rules'
   | 'recurring'
   | 'settings';
 
 const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Riepilogo', icon: '📊' },
+  { id: 'assistant', label: 'Assistente', icon: '🤖' },
   { id: 'categories', label: 'Categorie & Budget', icon: '🏷️' },
   { id: 'transactions', label: 'Movimenti', icon: '💳' },
   { id: 'import', label: 'Importa', icon: '📥' },
@@ -27,9 +30,22 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'settings', label: 'Backup', icon: '💾' },
 ];
 
+export interface TxFilter {
+  cat: string;
+  month: string;
+  nonce: number;
+}
+
 export default function App() {
   const { loading } = useData();
   const [view, setView] = useState<View>('dashboard');
+  const [txFilter, setTxFilter] = useState<TxFilter>({ cat: 'all', month: 'all', nonce: 0 });
+
+  // Apre la lista Movimenti filtrata (usata dal budget/grafici del Riepilogo).
+  function openTransactions(cat: string, month: string) {
+    setTxFilter((f) => ({ cat, month, nonce: f.nonce + 1 }));
+    setView('transactions');
+  }
 
   if (loading) {
     return (
@@ -68,8 +84,9 @@ export default function App() {
       </header>
 
       <main className="flex-1 p-4">
-        {view === 'dashboard' && <Dashboard />}
-        {view === 'transactions' && <Transactions />}
+        {view === 'dashboard' && <Dashboard onOpenTransactions={openTransactions} />}
+        {view === 'assistant' && <Assistant />}
+        {view === 'transactions' && <Transactions applyFilter={txFilter} />}
         {view === 'import' && <ImportWizard onDone={() => setView('transactions')} />}
         {view === 'categories' && <Categories />}
         {view === 'rules' && <Rules />}
