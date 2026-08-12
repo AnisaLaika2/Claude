@@ -302,40 +302,49 @@ function CategoryRow({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 p-3">
-      <input
-        type="color"
-        className="h-7 w-7 cursor-pointer rounded border border-slate-200 bg-white"
-        value={category.color}
-        onChange={(e) => onSave({ ...category, color: e.target.value })}
-        title="Colore"
-      />
-      <input
-        className="input max-w-[220px] flex-1"
-        value={category.name}
-        onChange={(e) => onSave({ ...category, name: e.target.value })}
-      />
-      {groups.length > 0 && (
-        <select
-          className="input w-auto text-sm"
-          value={category.groupId ?? ''}
-          onChange={(e) => onSave({ ...category, groupId: e.target.value || null })}
+    <div className="p-3">
+      {/* Riga 1: colore + nome (largo e leggibile) + elimina */}
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          className="h-8 w-8 shrink-0 cursor-pointer rounded border border-slate-200 bg-white"
+          value={category.color}
+          onChange={(e) => onSave({ ...category, color: e.target.value })}
+          title="Colore"
+        />
+        <input
+          className="input min-w-0 flex-1"
+          value={category.name}
+          onChange={(e) => onSave({ ...category, name: e.target.value })}
+          placeholder="Nome categoria"
+        />
+        <button
+          className="btn-ghost shrink-0 !px-2 !py-1 text-red-500"
+          onClick={onDelete}
+          title="Elimina categoria"
         >
-          <option value="">— nessun gruppo —</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
+          🗑️
+        </button>
+      </div>
+
+      {/* Riga 2: assegnazione al gruppo */}
+      {groups.length > 0 && (
+        <div className="mt-2 flex items-center gap-2 pl-10">
+          <span className="shrink-0 text-xs text-slate-400">Gruppo</span>
+          <select
+            className="input flex-1 text-sm"
+            value={category.groupId ?? ''}
+            onChange={(e) => onSave({ ...category, groupId: e.target.value || null })}
+          >
+            <option value="">— nessun gruppo —</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
-      <button
-        className="btn-ghost ml-auto !px-2 !py-1 text-red-500"
-        onClick={onDelete}
-        title="Elimina categoria"
-      >
-        🗑️
-      </button>
     </div>
   );
 }
