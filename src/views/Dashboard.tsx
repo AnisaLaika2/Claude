@@ -114,6 +114,16 @@ export default function Dashboard({
   const shownBudgets = budgetPeriod === 'week' ? weekBudgets : budgets;
   const overview = useMemo(() => budgetOverview(shownBudgets), [shownBudgets]);
 
+  // Importo "in sospeso": spese fisse ricorrenti ancora da addebitare questo mese
+  // (al netto delle entrate ricorrenti in arrivo), da togliere dal saldo disponibile.
+  const committed = useMemo(() => {
+    const day = new Date().getDate();
+    const up = recurring.filter((r) => r.active && r.dayOfMonth >= day);
+    const exp = up.filter((r) => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+    const inc = up.filter((r) => r.type === 'income').reduce((s, r) => s + r.amount, 0);
+    return exp - inc;
+  }, [recurring]);
+
   // Promemoria settimanale di importazione (una volta a settimana).
   const [reminder, setReminder] = useState(false);
   useEffect(() => {
@@ -159,6 +169,7 @@ export default function Dashboard({
         <AccountsCard
           accounts={accounts}
           transactions={transactions}
+          committed={committed}
           onSave={saveAccount}
           onRemove={removeAccount}
         />
@@ -213,6 +224,7 @@ export default function Dashboard({
       <AccountsCard
         accounts={accounts}
         transactions={transactions}
+        committed={committed}
         onSave={saveAccount}
         onRemove={removeAccount}
       />
@@ -532,15 +544,18 @@ export default function Dashboard({
 function AccountsCard({
   accounts,
   transactions,
+  committed,
   onSave,
   onRemove,
 }: {
   accounts: Account[];
   transactions: Transaction[];
+  committed: number;
   onSave: (a: Account) => void;
   onRemove: (id: string) => void;
 }) {
   const total = accounts.reduce((s, a) => s + accountBalance(a, transactions), 0);
+  const available = total - committed;
 
   function add(name: string) {
     onSave({ id: uid(), name, balance: 0, asOf: todayISO() });
@@ -550,13 +565,28 @@ function AccountsCard({
     <div className="rounded-xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm">
       <p className="text-sm font-medium text-brand-700">💰 Saldo attuale in banca</p>
       {accounts.length > 0 && (
-        <p
-          className={`mt-1 text-4xl font-extrabold tracking-tight ${
-            total >= 0 ? 'text-slate-900' : 'text-red-600'
-          }`}
-        >
-          {formatCurrency(total)}
-        </p>
+        <>
+          <p
+            className={`mt-1 text-4xl font-extrabold tracking-tight ${
+              total >= 0 ? 'text-slate-900' : 'text-red-600'
+            }`}
+          >
+            {formatCurrency(total)}
+          </p>
+          {committed > 0 && (
+            <p className="mt-1 text-sm text-slate-600">
+              Disponibile dopo le spese fisse in arrivo:{' '}
+              <span
+                className={`font-bold ${available >= 0 ? 'text-emerald-700' : 'text-red-600'}`}
+              >
+                {formatCurrency(available)}
+              </span>{' '}
+              <span className="text-xs text-slate-400">
+                (in sospeso {formatCurrency(committed)})
+              </span>
+            </p>
+          )}
+        </>
       )}
 
       {accounts.length === 0 ? (
