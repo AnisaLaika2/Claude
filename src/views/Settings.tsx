@@ -10,6 +10,7 @@ import {
   weeklyReminderEnabled,
   setWeeklyReminderEnabled,
 } from '../lib/notify';
+import { getBudgetStartDay, setBudgetStartDay } from '../lib/settings';
 import Papa from 'papaparse';
 
 export default function Settings() {
@@ -18,6 +19,17 @@ export default function Settings() {
   const [msg, setMsg] = useState('');
   const [notif, setNotif] = useState(notificationsEnabled());
   const [weekly, setWeekly] = useState(weeklyReminderEnabled());
+  const [startDay, setStartDay] = useState(getBudgetStartDay());
+
+  function changeStartDay(day: number) {
+    setStartDay(day);
+    setBudgetStartDay(day);
+    setMsg(
+      day === 1
+        ? 'Mese di budget impostato sul mese solare (dal 1°).'
+        : `Mese di budget impostato dal giorno ${day} (ciclo ${day}→${day}). Apri il Riepilogo per vederlo.`,
+    );
+  }
 
   async function toggleWeekly(on: boolean) {
     if (on) await requestNotificationPermission();
@@ -157,6 +169,30 @@ export default function Settings() {
             onChange={(e) => toggleWeekly(e.target.checked)}
           />
           Promemoria settimanale per importare le spese (a inizio settimana)
+        </label>
+      </div>
+
+      <div className="card p-4">
+        <h3 className="mb-2 font-semibold text-slate-700">Mese di budget</h3>
+        <p className="mb-3 text-sm text-slate-600">
+          Se ricevi lo stipendio un certo giorno, puoi far partire il “mese” di
+          budget da quel giorno (es. dal 10 al 9 del mese dopo). Riepilogo, budget e
+          grafici useranno questo ciclo. Lascia <strong>1</strong> per il mese solare.
+        </p>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          Il mese di budget inizia il giorno
+          <select
+            className="input w-24"
+            value={startDay}
+            onChange={(e) => changeStartDay(Number(e.target.value))}
+          >
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          del mese
         </label>
       </div>
 

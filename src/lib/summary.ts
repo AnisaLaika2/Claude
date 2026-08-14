@@ -50,6 +50,64 @@ export function filterByRange(txs: Transaction[], from: string, to: string): Tra
   return txs.filter((t) => t.date >= from && t.date <= to);
 }
 
+// ---- Cicli / "mese di budget" (allineabile alla busta paga) ----
+function fmtDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function isoToDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export interface Period {
+  from: string;
+  to: string;
+}
+
+/** Ciclo (from–to) che contiene la data, dato il giorno di inizio (1–28). */
+export function periodRange(anchor: Date, startDay: number): Period {
+  const day = Math.min(28, Math.max(1, startDay));
+  const from =
+    anchor.getDate() >= day
+      ? new Date(anchor.getFullYear(), anchor.getMonth(), day)
+      : new Date(anchor.getFullYear(), anchor.getMonth() - 1, day);
+  const to = new Date(from.getFullYear(), from.getMonth() + 1, day);
+  to.setDate(to.getDate() - 1);
+  return { from: fmtDate(from), to: fmtDate(to) };
+}
+
+/** Elenco dei cicli che contengono movimenti + ciclo corrente, dal più recente. */
+export function listPeriods(
+  txDates: string[],
+  startDay: number,
+  today = new Date(),
+): Period[] {
+  const set = new Set<string>();
+  for (const d of txDates) set.add(periodRange(isoToDate(d), startDay).from);
+  set.add(periodRange(today, startDay).from);
+  return Array.from(set)
+    .sort()
+    .reverse()
+    .map((from) => periodRange(isoToDate(from), startDay));
+}
+
+const MONTHS_IT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+
+/** Etichetta leggibile del ciclo (es. "10 lug – 9 ago 2026"; mese solare se startDay=1). */
+export function formatPeriod(p: Period, startDay: number): string {
+  if (startDay === 1) {
+    const [y, m] = p.from.split('-').map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleDateString('it-IT', {
+      month: 'long',
+      year: 'numeric',
+    });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+  const f = isoToDate(p.from);
+  const t = isoToDate(p.to);
+  return `${f.getDate()} ${MONTHS_IT[f.getMonth()]} – ${t.getDate()} ${MONTHS_IT[t.getMonth()]} ${t.getFullYear()}`;
+}
+
 export function totals(txs: Transaction[]): {
   income: number;
   expense: number;

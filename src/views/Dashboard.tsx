@@ -16,10 +16,10 @@ import { StatCard, EmptyState } from '../components/ui';
 import {
   formatCurrency,
   formatMonthLabel,
-  currentMonth,
   todayISO,
   uid,
 } from '../lib/format';
+import { getBudgetStartDay } from '../lib/settings';
 import type {
   Account,
   PlannedExpense,
@@ -37,10 +37,13 @@ import {
   currentWeekRange,
   expenseByCategoryInGroup,
   expenseByGroup,
-  filterByMonth,
   filterByRange,
+  formatPeriod,
+  listPeriods,
   monthlyTrend,
+  periodRange,
   totals,
+  type Period,
 } from '../lib/summary';
 import { parseAmount } from '../lib/parse-values';
 import {
@@ -68,11 +71,13 @@ export default function Dashboard({
     saveAccount,
     removeAccount,
   } = useData();
-  const [month, setMonth] = useState(currentMonth());
+  const startDay = getBudgetStartDay();
+  const currentPeriod = useMemo(() => periodRange(new Date(), startDay), [startDay]);
+  const [period, setPeriod] = useState<Period>(currentPeriod);
 
   const monthTxs = useMemo(
-    () => filterByMonth(transactions, month),
-    [transactions, month],
+    () => filterByRange(transactions, period.from, period.to),
+    [transactions, period],
   );
   const t = useMemo(() => totals(monthTxs), [monthTxs]);
   const groupSlices = useMemo(
@@ -83,7 +88,7 @@ export default function Dashboard({
   const [drillGroup, setDrillGroup] = useState<string | null>(null);
   useEffect(() => {
     setDrillGroup(null);
-  }, [month]);
+  }, [period.from]);
   const expenseGroups = useMemo(() => groups.filter((g) => g.type === 'expense'), [groups]);
   const subSlices = useMemo(
     () => (drillGroup ? expenseByCategoryInGroup(monthTxs, categories, drillGroup) : []),
@@ -124,16 +129,20 @@ export default function Dashboard({
     }
   }, []);
 
-  const months = useMemo(() => {
-    const set = new Set<string>(transactions.map((x) => x.date.slice(0, 7)));
-    set.add(currentMonth());
-    return Array.from(set).sort().reverse();
-  }, [transactions]);
+  const periods = useMemo(
+    () => listPeriods(transactions.map((x) => x.date), startDay),
+    [transactions, startDay],
+  );
 
-  // Notifica (una volta per sessione) se ci si avvicina/supera un budget del mese corrente.
+  // Notifica (una volta per sessione) se ci si avvicina/supera un budget del periodo corrente.
   useEffect(() => {
-    if (!notificationsEnabled() || month !== currentMonth() || alerts.length === 0) return;
-    const key = `gs_notified_${month}`;
+    if (
+      !notificationsEnabled() ||
+      period.from !== currentPeriod.from ||
+      alerts.length === 0
+    )
+      return;
+    const key = `gs_notified_${period.from}`;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
     const over = alerts.filter((b) => b.ratio >= 1);
@@ -142,7 +151,7 @@ export default function Dashboard({
       .map((b) => `${b.group.name}: ${Math.round(b.ratio * 100)}%`)
       .join(' · ');
     showNotification(title, body);
-  }, [alerts, month]);
+  }, [alerts, period.from]);
 
   if (transactions.length === 0) {
     return (
@@ -168,13 +177,16 @@ export default function Dashboard({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-800">Riepilogo</h2>
         <select
-          className="input max-w-xs"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
+          className="input max-w-[220px]"
+          value={period.from}
+          onChange={(e) => {
+            const p = periods.find((x) => x.from === e.target.value);
+            if (p) setPeriod(p);
+          }}
         >
-          {months.map((m) => (
-            <option key={m} value={m}>
-              {formatMonthLabel(m)}
+          {periods.map((p) => (
+            <option key={p.from} value={p.from}>
+              {formatPeriod(p, startDay)}
             </option>
           ))}
         </select>
@@ -259,7 +271,11 @@ export default function Dashboard({
       <div className="card p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold text-slate-700">
-            {budgetPeriod === 'week' ? 'Budget della settimana' : 'Budget del mese'}
+            {budgetPeriod === 'week'
+              ? 'Budget della settimana'
+              : startDay === 1
+                ? 'Budget del mese'
+                : 'Budget del ciclo'}
           </h3>
           <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-xs">
             <button
@@ -323,7 +339,12 @@ export default function Dashboard({
                   spent={b.spent}
                   budget={b.budget}
                   ratio={b.ratio}
-                  onClick={() => onOpenTransactions(`group:${b.group.id}`, month)}
+                  onClick={() =>
+                    onOpenTransactions(
+                      `group:${b.group.id}`,
+                      startDay === 1 ? period.from.slice(0, 7) : 'all',
+                    )
+                  }
                 />
               ))}
             </div>
@@ -336,7 +357,7 @@ export default function Dashboard({
         <h3 className="mb-3 font-semibold text-slate-700">Spese per gruppo (macro)</h3>
         {groupSlices.length === 0 ? (
           <p className="py-6 text-center text-sm text-slate-400">
-            Nessuna spesa in questo mese.
+            Nessuna spesa in questo periodo.
           </p>
         ) : (
           <div className="space-y-2">
@@ -348,7 +369,12 @@ export default function Dashboard({
                   key={g.id}
                   type="button"
                   disabled={!clickable}
-                  onClick={() => onOpenTransactions(`group:${g.id}`, month)}
+                  onClick={() =>
+                    onOpenTransactions(
+                      `group:${g.id}`,
+                      startDay === 1 ? period.from.slice(0, 7) : 'all',
+                    )
+                  }
                   className={`block w-full text-left ${
                     clickable ? 'rounded-lg p-1 hover:bg-slate-50' : ''
                   }`}
@@ -441,7 +467,7 @@ export default function Dashboard({
             )
           ) : groupSlices.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-400">
-              Nessuna spesa in questo mese.
+              Nessuna spesa in questo periodo.
             </p>
           ) : (
             <>
