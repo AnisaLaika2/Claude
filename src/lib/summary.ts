@@ -1,6 +1,6 @@
 // Funzioni di aggregazione per dashboard e report.
 
-import type { Account, Category, CategoryGroup, Transaction } from '../types';
+import type { Account, Category, CategoryGroup, Recurring, Transaction } from '../types';
 
 /**
  * Saldo aggiornato di un conto: al saldo di base si aggiungono i movimenti di
@@ -106,6 +106,48 @@ export function formatPeriod(p: Period, startDay: number): string {
   const f = isoToDate(p.from);
   const t = isoToDate(p.to);
   return `${f.getDate()} ${MONTHS_IT[f.getMonth()]} – ${t.getDate()} ${MONTHS_IT[t.getMonth()]} ${t.getFullYear()}`;
+}
+
+/**
+ * Data in cui cade una spesa ricorrente (giorno del mese) all'interno del ciclo
+ * di budget corrente. Se il giorno è ≥ inizio ciclo cade nel primo mese del
+ * ciclo, altrimenti nel secondo (es. addebito il 1° con ciclo 10→9).
+ */
+export function recurringDateInPeriod(
+  dayOfMonth: number,
+  period: Period,
+  startDay: number,
+): string {
+  const d = Math.min(28, Math.max(1, dayOfMonth));
+  const start = Math.min(28, Math.max(1, startDay));
+  let [y, m] = period.from.split('-').map(Number); // m: 1-based
+  if (d < start) {
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+export interface UpcomingRecurring {
+  recurring: Recurring;
+  date: string;
+}
+
+/** Ricorrenti attive che cadono nel ciclo corrente e non sono ancora passate. */
+export function upcomingRecurring(
+  recurring: Recurring[],
+  period: Period,
+  startDay: number,
+  today: string,
+): UpcomingRecurring[] {
+  return recurring
+    .filter((r) => r.active)
+    .map((r) => ({ recurring: r, date: recurringDateInPeriod(r.dayOfMonth, period, startDay) }))
+    .filter((x) => x.date >= today && x.date <= period.to)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
 export function totals(txs: Transaction[]): {

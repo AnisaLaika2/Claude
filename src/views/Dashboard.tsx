@@ -15,6 +15,7 @@ import { useData } from '../store/DataContext';
 import { StatCard, EmptyState } from '../components/ui';
 import {
   formatCurrency,
+  formatDate,
   formatMonthLabel,
   todayISO,
   uid,
@@ -23,7 +24,6 @@ import { getBudgetStartDay } from '../lib/settings';
 import type {
   Account,
   PlannedExpense,
-  Recurring,
   SavingsGoal,
   Transaction,
 } from '../types';
@@ -43,7 +43,9 @@ import {
   monthlyTrend,
   periodRange,
   totals,
+  upcomingRecurring,
   type Period,
+  type UpcomingRecurring,
 } from '../lib/summary';
 import { parseAmount } from '../lib/parse-values';
 import {
@@ -114,15 +116,18 @@ export default function Dashboard({
   const shownBudgets = budgetPeriod === 'week' ? weekBudgets : budgets;
   const overview = useMemo(() => budgetOverview(shownBudgets), [shownBudgets]);
 
-  // Importo "in sospeso": spese fisse ricorrenti ancora da addebitare questo mese
-  // (al netto delle entrate ricorrenti in arrivo), da togliere dal saldo disponibile.
+  // Spese/entrate fisse in arrivo nel ciclo di budget corrente (rispetta il
+  // giorno di inizio impostato, es. 10→9), non ancora passate.
+  const upcoming = useMemo(
+    () => upcomingRecurring(recurring, currentPeriod, startDay, todayISO()),
+    [recurring, currentPeriod, startDay],
+  );
+  // Importo "in sospeso" da togliere dal saldo disponibile (spese − entrate in arrivo).
   const committed = useMemo(() => {
-    const day = new Date().getDate();
-    const up = recurring.filter((r) => r.active && r.dayOfMonth >= day);
-    const exp = up.filter((r) => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
-    const inc = up.filter((r) => r.type === 'income').reduce((s, r) => s + r.amount, 0);
-    return exp - inc;
-  }, [recurring]);
+    let v = 0;
+    for (const u of upcoming) v += u.recurring.type === 'expense' ? u.recurring.amount : -u.recurring.amount;
+    return v;
+  }, [upcoming]);
 
   // Promemoria settimanale di importazione (una volta a settimana).
   const [reminder, setReminder] = useState(false);
@@ -229,9 +234,9 @@ export default function Dashboard({
         onRemove={removeAccount}
       />
 
-      {/* Previsione: spese fisse in arrivo */}
+      {/* Previsione: spese fisse in arrivo (nel ciclo di budget) */}
       <ForecastCard
-        recurring={recurring}
+        upcoming={upcoming}
         accountsTotal={accounts.reduce((s, a) => s + accountBalance(a, transactions), 0)}
         hasAccounts={accounts.length > 0}
       />
@@ -687,28 +692,22 @@ function AccountRow({
 }
 
 function ForecastCard({
-  recurring,
+  upcoming,
   accountsTotal,
   hasAccounts,
 }: {
-  recurring: Recurring[];
+  upcoming: UpcomingRecurring[];
   accountsTotal: number;
   hasAccounts: boolean;
 }) {
-  const active = recurring.filter((r) => r.active);
-  if (active.length === 0) return null;
+  if (upcoming.length === 0) return null;
 
-  const today = new Date().getDate();
-  // In arrivo entro fine mese (giorno di addebito non ancora passato).
-  const upcoming = active
-    .filter((r) => r.dayOfMonth >= today)
-    .sort((a, b) => a.dayOfMonth - b.dayOfMonth);
   const upExpense = upcoming
-    .filter((r) => r.type === 'expense')
-    .reduce((s, r) => s + r.amount, 0);
+    .filter((u) => u.recurring.type === 'expense')
+    .reduce((s, u) => s + u.recurring.amount, 0);
   const upIncome = upcoming
-    .filter((r) => r.type === 'income')
-    .reduce((s, r) => s + r.amount, 0);
+    .filter((u) => u.recurring.type === 'income')
+    .reduce((s, u) => s + u.recurring.amount, 0);
   const predicted = accountsTotal - upExpense + upIncome;
   const shortfall = hasAccounts && predicted < 0;
 
@@ -716,21 +715,21 @@ function ForecastCard({
     <div className="card p-4">
       <h3 className="mb-1 font-semibold text-slate-700">🔮 Spese fisse in arrivo</h3>
       <p className="mb-3 text-xs text-slate-400">
-        Previsione dalle spese ricorrenti — non conta nei totali del mese.
+        In arrivo nel ciclo di budget corrente — non conta nei totali.
       </p>
 
       {upcoming.length === 0 ? (
         <p className="text-sm text-slate-500">
-          Nessuna spesa fissa in arrivo entro fine mese. 👍
+          Nessuna spesa fissa in arrivo in questo ciclo. 👍
         </p>
       ) : (
         <>
           <div className="space-y-1">
-            {upcoming.map((r) => (
+            {upcoming.map(({ recurring: r, date }) => (
               <div key={r.id} className="flex items-center justify-between text-sm">
                 <span className="text-slate-600">
-                  <span className="mr-2 inline-block w-14 text-slate-400">
-                    il {r.dayOfMonth}
+                  <span className="mr-2 inline-block w-20 text-slate-400">
+                    {formatDate(date).slice(0, 5)}
                   </span>
                   {r.description}
                 </span>
