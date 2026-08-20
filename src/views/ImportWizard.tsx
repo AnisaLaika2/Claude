@@ -45,6 +45,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
     rules,
     profiles,
     addTransactions,
+    replaceImportedRange,
     saveProfile,
     saveCategory,
   } = useData();
@@ -62,6 +63,9 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
   // Origine dei movimenti (Conto o Carta): salvata come metodo di pagamento,
   // senza importare il numero di conto/carta.
   const [origin, setOrigin] = useState('Conto corrente');
+  // "Sostituisci periodo": rimpiazza i movimenti importati nel range di date del
+  // file con quelli nuovi (evita i doppioni da import sovrapposti).
+  const [replaceRange, setReplaceRange] = useState(true);
 
   const existingHashes = useMemo(
     () => new Set(transactions.map((t) => t.dedupHash).filter(Boolean) as string[]),
@@ -232,9 +236,12 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
   }
 
   async function doImport() {
-    const toImport = staged.filter((s) => s.selected);
+    // In modalità "sostituisci periodo" il file è la fonte autorevole per il suo
+    // intervallo di date: si importano tutte le righe (i duplicati non contano,
+    // perché prima cancelliamo gli importati nel periodo).
+    const toImport = replaceRange ? staged : staged.filter((s) => s.selected);
     if (toImport.length === 0) {
-      setError('Nessuna transazione selezionata.');
+      setError('Nessuna transazione da importare.');
       return;
     }
 
@@ -281,7 +288,17 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
         createdAt: Date.now(),
       });
     }
-    await addTransactions(txs);
+    let message: string;
+    if (replaceRange) {
+      const dates = txs.map((t) => t.date).sort();
+      const from = dates[0];
+      const to = dates[dates.length - 1];
+      await replaceImportedRange(from, to, txs);
+      message = `Importate ${txs.length} transazioni. Sostituiti i movimenti importati dal ${formatDate(from)} al ${formatDate(to)}.`;
+    } else {
+      await addTransactions(txs);
+      message = `Importate ${txs.length} transazioni.`;
+    }
 
     if (saveProfileName.trim() && tabular) {
       await saveProfile({
@@ -290,7 +307,7 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
         ...mapping,
       });
     }
-    alert(`Importate ${txs.length} transazioni.`);
+    alert(message);
     reset();
     onDone();
   }
@@ -515,6 +532,8 @@ export default function ImportWizard({ onDone }: { onDone: () => void }) {
           isTabular={!!tabular}
           saveProfileName={saveProfileName}
           setSaveProfileName={setSaveProfileName}
+          replaceRange={replaceRange}
+          setReplaceRange={setReplaceRange}
           onImport={doImport}
         />
       )}
@@ -609,6 +628,8 @@ function PreviewStep({
   isTabular,
   saveProfileName,
   setSaveProfileName,
+  replaceRange,
+  setReplaceRange,
   onImport,
 }: {
   staged: StagedTransaction[];
@@ -617,10 +638,16 @@ function PreviewStep({
   isTabular: boolean;
   saveProfileName: string;
   setSaveProfileName: (v: string) => void;
+  replaceRange: boolean;
+  setReplaceRange: (v: boolean) => void;
   onImport: () => void;
 }) {
   const selectedCount = staged.filter((s) => s.selected).length;
   const dupCount = staged.filter((s) => s.duplicate).length;
+  const importCount = replaceRange ? staged.length : selectedCount;
+  const dates = staged.map((s) => s.date).sort();
+  const rangeFrom = dates[0];
+  const rangeTo = dates[dates.length - 1];
 
   if (staged.length === 0) {
     return <EmptyState title="Nessuna transazione da mostrare." />;
@@ -660,6 +687,25 @@ function PreviewStep({
           </button>
         </div>
       </div>
+
+      {/* Modalità sostituisci periodo */}
+      <label className="flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={replaceRange}
+          onChange={(e) => setReplaceRange(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium text-brand-800">Sostituisci il periodo del file</span>{' '}
+          (consigliato). I movimenti importati dal{' '}
+          <strong>{rangeFrom ? formatDate(rangeFrom) : '—'}</strong> al{' '}
+          <strong>{rangeTo ? formatDate(rangeTo) : '—'}</strong> vengono rimpiazzati con
+          quelli di questo file: niente doppioni se reimporti un periodo più ampio. I
+          movimenti inseriti a mano restano. Se lo disattivi, aggiunge solo le righe
+          selezionate.
+        </span>
+      </label>
 
       <div className="card max-h-[480px] overflow-auto">
         <table className="w-full text-sm">
@@ -763,8 +809,8 @@ function PreviewStep({
             />
           </div>
         )}
-        <button className="btn-primary ml-auto" onClick={onImport} disabled={selectedCount === 0}>
-          Importa {selectedCount} transazioni
+        <button className="btn-primary ml-auto" onClick={onImport} disabled={importCount === 0}>
+          {replaceRange ? 'Sostituisci e importa' : 'Importa'} {importCount} transazioni
         </button>
       </div>
     </div>

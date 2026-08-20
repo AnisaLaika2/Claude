@@ -38,6 +38,8 @@ interface DataContextValue {
   saveTransaction: (t: Transaction) => Promise<void>;
   addTransactions: (list: Transaction[]) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
+  /** Sostituisce i movimenti importati nel periodo [from,to] con quelli nuovi. */
+  replaceImportedRange: (from: string, to: string, list: Transaction[]) => Promise<void>;
 
   // categorie
   saveCategory: (c: Category) => Promise<void>;
@@ -160,6 +162,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       removeTransaction: async (id) => {
         await db.deleteTransaction(id);
         setTransactions((prev) => prev.filter((x) => x.id !== id));
+      },
+      replaceImportedRange: async (from, to, list) => {
+        await db.deleteImportedInRange(from, to);
+        await db.bulkPutTransactions(list);
+        setTransactions(await db.getTransactions());
       },
 
       saveCategory: async (c) => {

@@ -151,6 +151,28 @@ export async function clearTransactions(): Promise<void> {
   await db.clear('transactions');
 }
 /**
+ * Cancella i movimenti IMPORTATI (source='import') con data compresa tra
+ * from e to (inclusi). Usato dall'importazione "sostituisci periodo": le voci
+ * inserite a mano o di altra origine restano intatte.
+ */
+export async function deleteImportedInRange(from: string, to: string): Promise<number> {
+  const db = await getDB();
+  const tx = db.transaction('transactions', 'readwrite');
+  let removed = 0;
+  let cursor = await tx.store.openCursor();
+  while (cursor) {
+    const t = cursor.value;
+    if (t.source === 'import' && t.date >= from && t.date <= to) {
+      await cursor.delete();
+      removed++;
+    }
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return removed;
+}
+
+/**
  * Rimuove i movimenti generati automaticamente dalle spese ricorrenti.
  * Le ricorrenti ora servono solo per la previsione e non creano più movimenti.
  */
