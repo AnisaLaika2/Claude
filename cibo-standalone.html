@@ -811,7 +811,7 @@ function answer(q){const low=q.toLowerCase();const active=S.pantry.filter(p=>p.q
 
 /* ---------- MODALS ---------- */
 const modroot=document.getElementById('modroot');
-function openSheet(html){modroot.innerHTML=`<div class="scrim" data-close="1"></div><div class="sheet"><div class="grab"></div>${html}</div>`;modroot.classList.add('show')}
+function openSheet(html,locked){modroot.innerHTML=`<div class="scrim" ${locked?'':'data-close="1"'}></div><div class="sheet">${locked?'':'<div class="grab"></div>'}${html}</div>`;modroot.classList.add('show')}
 function closeSheet(){modroot.classList.remove('show');modroot.innerHTML=''}
 modroot.addEventListener('click',e=>{if(e.target.dataset.close)closeSheet()});
 
@@ -869,7 +869,7 @@ function openOnboarding(){
     <div class="fgroup"><label class="lab">Attività</label><div class="catgrid" id="o_act">${[['sedentary','Sedentario'],['light','Leggero'],['moderate','Moderato'],['active','Attivo'],['athlete','Atleta']].map(([k,l])=>`<button class="chip ${p.activity===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
     <div class="fgroup"><label class="lab">Regime</label><div class="catgrid" id="o_diet">${[['none','Onnivora'],['vegetarian','Vegetariana'],['vegan','Vegana'],['mediterranean','Mediterranea'],['keto','Keto']].map(([k,l])=>`<button class="chip ${(p.diet||'none')===k?'on':''}" data-pick="${k}">${l}</button>`).join('')}</div></div>
     <button class="btn pri block" style="margin-top:16px" data-action="saveonboard">✨ Crea il mio piano</button>
-    <button class="btn ghost block" style="margin-top:8px;background:none;border:none;color:rgb(var(--muted))" data-action="skiponboard">Salta per ora</button>`);
+    <button class="btn ghost block" style="margin-top:8px;background:none;border:none;color:rgb(var(--muted))" data-action="skiponboard">Salta per ora</button>`,true);
   const pick={sex:p.sex,goal:p.goal,pace:p.pace||'moderate',activity:p.activity,diet:p.diet||'none'};
   const wire=(id,key,cls)=>{const el=modroot.querySelector('#'+id);el.addEventListener('click',ev=>{const b=ev.target.closest('[data-pick]');if(!b)return;pick[key]=b.dataset.pick;el.querySelectorAll(cls).forEach(x=>x.classList.toggle('on',x===b))})};
   wire('o_sex','sex','.chip');wire('o_goal','goal','.loctile');wire('o_pace','pace','.chip');wire('o_act','activity','.chip');wire('o_diet','diet','.chip');
