@@ -8,6 +8,7 @@ import Rules from './views/Rules';
 import RecurringView from './views/Recurring';
 import Planned from './views/Planned';
 import Savings from './views/Savings';
+import Shared from './views/Shared';
 import Settings from './views/Settings';
 import Assistant from './views/Assistant';
 
@@ -16,6 +17,7 @@ type View =
   | 'assistant'
   | 'categories'
   | 'transactions'
+  | 'shared'
   | 'import'
   | 'rules'
   | 'recurring'
@@ -27,6 +29,7 @@ const NAV: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Riepilogo', icon: '📊' },
   { id: 'categories', label: 'Categorie & Budget', icon: '🏷️' },
   { id: 'transactions', label: 'Movimenti', icon: '💳' },
+  { id: 'shared', label: 'Condivise', icon: '🤝' },
   { id: 'assistant', label: 'Assistente', icon: '🤖' },
   { id: 'import', label: 'Importa', icon: '📥' },
   { id: 'savings', label: 'Risparmi', icon: '🎯' },
@@ -95,6 +98,7 @@ export default function App() {
         {view === 'transactions' && <Transactions applyFilter={txFilter} />}
         {view === 'import' && <ImportWizard onDone={() => setView('transactions')} />}
         {view === 'categories' && <Categories />}
+        {view === 'shared' && <Shared />}
         {view === 'rules' && <Rules />}
         {view === 'recurring' && <RecurringView />}
         {view === 'planned' && <Planned />}

@@ -32,6 +32,8 @@ export interface Category {
   budget: number;
   /** macro-categoria (gruppo) di appartenenza, null se senza gruppo */
   groupId?: string | null;
+  /** true se è una spesa condivisa (es. con il partner): appare nella schermata "Condivise" */
+  shared?: boolean;
 }
 
 /** Conto/carta con il saldo attuale inserito manualmente dall'utente. */
