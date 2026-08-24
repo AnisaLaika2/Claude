@@ -43,3 +43,28 @@ export function setSharedConfig(cfg: SharedConfig): void {
   localStorage.setItem(SHARED_MYSHARE, String(s));
   localStorage.setItem(SHARED_INCOMING, cfg.incomingName.trim());
 }
+
+// Giorno di inizio del "mese" nella schermata Condivise, indipendente dalla home.
+const SHARED_START_DAY = 'gs_shared_start_day';
+
+/**
+ * Giorno di inizio del mese per la sola schermata Condivise (1–28), oppure null
+ * per seguire l'impostazione della home.
+ */
+export function getSharedStartDay(): number | null {
+  const raw = localStorage.getItem(SHARED_START_DAY);
+  if (raw === null || raw === '') return null;
+  const v = Number(raw);
+  if (!v || v < 1 || v > 28) return null;
+  return Math.floor(v);
+}
+
+/** Imposta il giorno di inizio della schermata Condivise; null = come la home. */
+export function setSharedStartDay(day: number | null): void {
+  if (day === null) {
+    localStorage.removeItem(SHARED_START_DAY);
+    return;
+  }
+  const d = Math.min(28, Math.max(1, Math.floor(day) || 1));
+  localStorage.setItem(SHARED_START_DAY, String(d));
+}

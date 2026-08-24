@@ -16,15 +16,30 @@ import {
   formatPeriod,
   type Period,
 } from '../lib/summary';
-import { getBudgetStartDay, getSharedConfig, setSharedConfig } from '../lib/settings';
+import {
+  getBudgetStartDay,
+  getSharedConfig,
+  setSharedConfig,
+  getSharedStartDay,
+  setSharedStartDay,
+} from '../lib/settings';
 import type { Transaction } from '../types';
 
 export default function Shared() {
   const { categories, transactions, saveCategory } = useData();
 
-  const startDay = getBudgetStartDay();
+  const homeStartDay = getBudgetStartDay();
+  // Giorno di inizio mese specifico di questa schermata (null = come la home).
+  const [sharedStart, setSharedStart] = useState<number | null>(() => getSharedStartDay());
+  const startDay = sharedStart ?? homeStartDay;
   const [cfg, setCfg] = useState(() => getSharedConfig());
   const [editCats, setEditCats] = useState(false);
+
+  function updateStartDay(value: number | null) {
+    setSharedStart(value);
+    setSharedStartDay(value);
+    setPeriodFrom('all'); // i cicli cambiano: torno a "Tutti i mesi"
+  }
 
   // Categorie di spesa contrassegnate come condivise.
   const sharedCats = useMemo(
@@ -256,6 +271,32 @@ export default function Shared() {
           <span className="mt-1 block text-xs text-slate-400">
             Le entrate che contengono questo nome vengono contate come rimborsi di {partnerLabel}.
             Se lo lasci vuoto uso “{cfg.partnerName}”.
+          </span>
+        </label>
+
+        <label className="mt-3 block text-sm text-slate-500">
+          <span className="mb-1 block">Inizio del mese (solo in questa schermata)</span>
+          <select
+            className="input"
+            value={sharedStart === null ? 'home' : String(sharedStart)}
+            onChange={(e) =>
+              updateStartDay(e.target.value === 'home' ? null : Number(e.target.value))
+            }
+          >
+            <option value="home">
+              Come la home (dal {homeStartDay}
+              {homeStartDay === 1 ? '° · mese solare' : ''})
+            </option>
+            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>
+                Dal giorno {d}
+                {d === 1 ? ' (mese solare)' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-slate-400">
+            Qui puoi contare il mese in modo diverso dal resto dell'app (es. dal 1° qui, dal{' '}
+            {homeStartDay} nella home).
           </span>
         </label>
       </div>
