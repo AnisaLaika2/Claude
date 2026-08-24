@@ -17,12 +17,15 @@ export function setBudgetStartDay(day: number): void {
 // ---- Spese condivise (divisione con il partner) ----
 const SHARED_PARTNER = 'gs_shared_partner';
 const SHARED_MYSHARE = 'gs_shared_myshare';
+const SHARED_INCOMING = 'gs_shared_incoming';
 
 export interface SharedConfig {
   /** nome della persona con cui si dividono le spese (per le etichette) */
   partnerName: string;
   /** quota a mio carico, in percentuale 0–100 (il resto è del partner) */
   myShare: number;
+  /** testo da cercare nei bonifici in arrivo del partner (es. "Luca Mercurio") */
+  incomingName: string;
 }
 
 /** Configurazione della divisione delle spese condivise. Default: 50/50. */
@@ -30,11 +33,13 @@ export function getSharedConfig(): SharedConfig {
   const partnerName = localStorage.getItem(SHARED_PARTNER) || 'Compagno';
   const raw = Number(localStorage.getItem(SHARED_MYSHARE));
   const myShare = raw >= 0 && raw <= 100 ? raw : 50;
-  return { partnerName, myShare };
+  const incomingName = localStorage.getItem(SHARED_INCOMING) ?? '';
+  return { partnerName, myShare, incomingName };
 }
 
 export function setSharedConfig(cfg: SharedConfig): void {
   localStorage.setItem(SHARED_PARTNER, cfg.partnerName.trim() || 'Compagno');
   const s = Math.min(100, Math.max(0, Math.round(cfg.myShare) || 0));
   localStorage.setItem(SHARED_MYSHARE, String(s));
+  localStorage.setItem(SHARED_INCOMING, cfg.incomingName.trim());
 }
