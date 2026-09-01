@@ -118,9 +118,14 @@ export default function Dashboard({
 
   // Spese/entrate fisse in arrivo nel ciclo di budget corrente (rispetta il
   // giorno di inizio impostato, es. 10→9), non ancora passate.
+  // Movimenti reali del ciclo corrente (per capire cosa è già stato addebitato).
+  const currentPeriodTxs = useMemo(
+    () => filterByRange(transactions, currentPeriod.from, currentPeriod.to),
+    [transactions, currentPeriod],
+  );
   const upcoming = useMemo(
-    () => upcomingRecurring(recurring, currentPeriod, startDay, todayISO()),
-    [recurring, currentPeriod, startDay],
+    () => upcomingRecurring(recurring, currentPeriod, startDay, todayISO(), currentPeriodTxs),
+    [recurring, currentPeriod, startDay, currentPeriodTxs],
   );
   // Importo "in sospeso" da togliere dal saldo disponibile (spese − entrate in arrivo).
   const committed = useMemo(() => {

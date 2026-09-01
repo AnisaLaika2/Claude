@@ -136,15 +136,39 @@ export interface UpcomingRecurring {
   date: string;
 }
 
-/** Ricorrenti attive che cadono nel ciclo corrente e non sono ancora passate. */
+/**
+ * Ricorrenti attive che cadono nel ciclo corrente e non sono ancora passate,
+ * ESCLUSE quelle il cui addebito reale è già presente nel ciclo: se tra i
+ * movimenti del periodo esiste già una spesa/entrata dello stesso importo e
+ * segno, la ricorrente è considerata già pagata e non compare più tra quelle
+ * "in arrivo" (così non viene sottratta due volte dal saldo).
+ * `periodTxs` sono i movimenti reali del ciclo corrente.
+ */
 export function upcomingRecurring(
   recurring: Recurring[],
   period: Period,
   startDay: number,
   today: string,
+  periodTxs: Transaction[] = [],
 ): UpcomingRecurring[] {
+  // Movimenti reali del ciclo (esclusi giroconti e le eventuali voci ricorrenti
+  // generate in passato), che verranno "consumati" dai match.
+  const available = countable(periodTxs).filter((t) => t.source !== 'recurring');
+  const used = new Set<string>();
+  const alreadyCharged = (r: Recurring): boolean => {
+    const match = available.find(
+      (t) => !used.has(t.id) && t.type === r.type && Math.abs(t.amount - r.amount) < 0.005,
+    );
+    if (match) {
+      used.add(match.id);
+      return true;
+    }
+    return false;
+  };
+
   return recurring
     .filter((r) => r.active)
+    .filter((r) => !alreadyCharged(r))
     .map((r) => ({ recurring: r, date: recurringDateInPeriod(r.dayOfMonth, period, startDay) }))
     .filter((x) => x.date >= today && x.date <= period.to)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
